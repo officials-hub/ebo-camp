@@ -1716,7 +1716,7 @@ let _editClinicianId=null;
 let _editStaffId=null;
 
 function openEditClinician(clinicianId){
-  const cl=clinicians.find(c=>c.id===clinicianId);
+  const cl=clinicians.find(c=>c.id==clinicianId);
   if(!cl)return;
   const nameParts=cl.name.split(' ');
   const first=nameParts[0]||'';
@@ -2082,7 +2082,7 @@ async function sendPinEmail(id){
 
 // ── RESET CAMPER PIN ────────────────────────────────────
 async function resetCamperPin(id){
-  const c = campers.find(x => x.id === id);
+  const c = campers.find(x => x.id == id);
   if(!c) return;
   if(!confirm(`Reset PIN for ${c.first_name} ${c.last_name}? A new PIN will be generated and emailed to them.`)) return;
   const newPin = String(Math.floor(1000 + Math.random() * 9000));
@@ -2090,7 +2090,7 @@ async function resetCamperPin(id){
   if(btn){ btn.disabled = true; btn.textContent = '...'; }
   try{
     await supa('campers','PATCH',{pin: newPin},`?id=eq.${id}`);
-    const idx = campers.findIndex(x => x.id === id);
+    const idx = campers.findIndex(x => x.id == id);
     if(idx >= 0) campers[idx].pin = newPin;
     // Email new PIN if they have an email
     if(c.email){
