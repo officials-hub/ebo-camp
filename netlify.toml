@@ -1,0 +1,14 @@
+# Netlify configuration for EBO Camp email function
+
+[build]
+  # This repo is static (just index.html). No build step needed.
+  publish = "."
+  functions = "netlify/functions"
+
+[functions]
+  # Use Node 20 runtime for the send-email function
+  node_bundler = "esbuild"
+
+# Note: The GitHub Pages deploy serves the portal at officials-hub.github.io/ebo-camp/
+# Netlify will also serve index.html at the Netlify URL, but that's fine — we only
+# need Netlify for the function. The portal fetches from the Netlify /.netlify/functions/ URL.
