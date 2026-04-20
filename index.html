@@ -1654,7 +1654,7 @@ async function saveCamper(){
   }catch(er){toast('Error',true);}
 }
 function editCamper(id){
-  const c=campers.find(x=>x.id===id);if(!c)return;
+  const c=campers.find(x=>x.id==id);if(!c)return;
   editCId=id;
   document.getElementById('mCamperTitle').textContent='EDIT CAMPER';
   document.getElementById('cfFirst').value=c.first_name||'';
@@ -1980,7 +1980,7 @@ function renderProfiles(search){
 }
 
 function openProfile(id){
-  const c=campers.find(x=>x.id===id);if(!c)return;
+  const c=campers.find(x=>x.id==id);if(!c)return;
   const cs=buildCamperScores();
   const sc=cs[id];
   const initials=(c.first_name?.[0]||'')+(c.last_name?.[0]||'');
@@ -2064,7 +2064,7 @@ function buildPinEmailHTML(camper){
 }
 
 async function sendPinEmail(id){
-  const c=campers.find(x=>x.id===id);
+  const c=campers.find(x=>x.id==id);
   if(!c||!c.email){toast('No email on file',true);return;}
   const btn=document.getElementById('pinbtn-'+id);
   if(btn){btn.disabled=true;btn.textContent='⏳';}
@@ -2682,7 +2682,7 @@ function renderCamperProfiles(search){
 }
 
 function openCamperProfile(id,evalContext){
-  const c=campers.find(x=>x.id===id);if(!c)return;
+  const c=campers.find(x=>x.id==id);if(!c)return;
   const initials=(c.first_name?.[0]||'')+(c.last_name?.[0]||'');
   const imgHtml=c.photo
     ?`<img class="pmod-img" src="${c.photo}" alt="${c.first_name}" onerror="this.outerHTML='<div class=pmod-initials>${initials}</div>'">`
@@ -3354,7 +3354,7 @@ function renderAdminSchedule() {
       const s2 = document.getElementById(`c2_${slotId}`);
       const s3 = document.getElementById(`c3_${slotId}`);
       const sc = document.getElementById(`cl_${slotId}`);
-      const getName = id => { const c = campers.find(x=>x.id===id); return c ? c.first_name+' '+c.last_name : ''; };
+      const getName = id => { const c = campers.find(x=>x.id==id); return c ? c.first_name+' '+c.last_name : ''; };
       if (s1 && existing.camper_1_id) { s1.value = existing.camper_1_id; const ti=document.getElementById('c1i_'+slotId); if(ti) ti.value=getName(existing.camper_1_id); }
       if (s2 && existing.camper_2_id) { s2.value = existing.camper_2_id; const ti=document.getElementById('c2i_'+slotId); if(ti) ti.value=getName(existing.camper_2_id); }
       if (s3 && existing.camper_3_id) { s3.value = existing.camper_3_id; const ti=document.getElementById('c3i_'+slotId); if(ti) ti.value=getName(existing.camper_3_id); }
