@@ -1716,7 +1716,7 @@ function openEditClinician(clinicianId){
   _editStaffId=staff?staff.id:null;
   document.getElementById('clFirst').value=first;
   document.getElementById('clLast').value=last;
-  document.getElementById('clEmail').value='';
+  document.getElementById('clEmail').value=cl.email||'';
   document.getElementById('clUser').value=staff?staff.username:'';
   document.getElementById('clPass').value=staff?staff.password:'';
   if(staff&&document.getElementById('clRole'))document.getElementById('clRole').value=staff.role||'Evaluator';
@@ -1730,15 +1730,13 @@ function openEditClinician(clinicianId){
 async function resendClinicianLogin(id){
   const cl=clinicians.find(c=>c.id==id);
   if(!cl){toast('Clinician not found',true);return;}
+  const e=(cl.email||'').trim().toLowerCase();
+  if(!e||!e.includes('@')){toast('No email on file — open Edit and add one',true);return;}
   const parts=cl.name.split(' ');
   const first=parts[0]||'';
   const last=parts.slice(1).join(' ')||'';
   const staff=staffList.find(s=>s.first_name===first&&s.last_name===last);
-  if(!staff){toast('No matching staff record — add username/password via Edit first',true);return;}
-  const email=prompt(`Email to resend login for ${cl.name}:`);
-  if(email===null)return;
-  const e=email.trim().toLowerCase();
-  if(!e||!e.includes('@')){toast('Invalid email',true);return;}
+  if(!staff){toast('No matching staff record — set username/password via Edit first',true);return;}
   try{
     const res=await fetch(CFG.EMAIL_FN_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       to:e,from:CFG.FROM_EMAIL,
@@ -1778,7 +1776,7 @@ async function saveClinician(){
       if(_editStaffId){
         await supa('staff','PATCH',{first_name:first,last_name:last,username:user,password:pass,role},`?id=eq.${_editStaffId}`);
       }
-      await supa('clinicians','PATCH',{name:fullName},`?id=eq.${_editClinicianId}`);
+      await supa('clinicians','PATCH',{name:fullName,email:email||null},`?id=eq.${_editClinicianId}`);
       closeModal('mClinician');
       resetClinicianModal();
       toast('Clinician updated!');
@@ -1792,7 +1790,7 @@ async function saveClinician(){
       const inClinicians=clinicians.find(c=>c.name===(first+' '+last));
       if(!inClinicians){
         await supa('staff','PATCH',{first_name:first,last_name:last,password:pass,role},`?id=eq.${existing.id}`);
-        await supa('clinicians','POST',{name:first+' '+last});
+        await supa('clinicians','POST',{name:first+' '+last,email});
         closeModal('mClinician');toast('Clinician re-added!');
         resetClinicianModal();
         await loadAll();renderAdminClinicians();updateAdminStats();populateAdminForms();
@@ -1801,7 +1799,7 @@ async function saveClinician(){
       errEl.textContent='Username already taken — choose a different one.';errEl.style.display='block';return;
     }
     await supa('staff','POST',{first_name:first,last_name:last,username:user,password:pass,role});
-    await supa('clinicians','POST',{name:fullName});
+    await supa('clinicians','POST',{name:fullName,email});
     if(document.getElementById('clSendEmail').checked&&email){
       try{
         await fetch(CFG.EMAIL_FN_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
