@@ -1805,33 +1805,36 @@ async function saveClinician(){
   }catch(e){console.error('saveClinician error:',e);errEl.textContent='Error: '+(e.message||'Unknown error');errEl.style.display='block';}
 }
 
+function toTitle(s){return (s||'').toLowerCase().replace(/\b\w/g,c=>c.toUpperCase());}
+
 function buildClinicianEmailHTML(first,last,username,password){
-  return `<div style="max-width:420px;margin:0 auto;font-family:Arial,sans-serif;background:#111;border-radius:8px;overflow:hidden;">
-    <div style="background:#C4C4C4;padding:14px 18px;">
-      <div style="color:#fff;font-size:15px;font-weight:700;letter-spacing:1px;">ELEVATE BASKETBALL OFFICIATING CAMP</div>
-      <div style="color:rgba(255,255,255,.8);font-size:11px;margin-top:2px;">APRIL 30 – MAY 3, 2026 · CLINICIAN ACCESS</div>
+  const fn=toTitle(first);
+  return `<div style="max-width:480px;margin:0 auto;font-family:Arial,Helvetica,sans-serif;background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08);">
+    <div style="background:#000000;padding:18px 22px;">
+      <div style="color:#ffffff;font-size:15px;font-weight:800;letter-spacing:1.5px;line-height:1.2;">ELEVATE BASKETBALL OFFICIATING CAMP</div>
+      <div style="color:rgba(255,255,255,.7);font-size:11px;letter-spacing:1px;margin-top:4px;">APRIL 30 – MAY 3, 2026 · CLINICIAN ACCESS</div>
     </div>
-    <div style="padding:18px;">
-      <p style="color:#f0f0eb;font-size:13px;margin:0 0 6px">Hey ${first},</p>
-      <p style="color:#aaa;font-size:12px;line-height:1.6;margin:0 0 16px">You've been added as a clinician. Use the credentials below to log in via the <strong style="color:#ccc;">Clinician</strong> tab.</p>
-      <table style="width:100%;border-collapse:collapse;background:#1a1a1a;border-radius:6px;overflow:hidden;margin-bottom:16px;">
+    <div style="padding:24px 22px 22px;">
+      <p style="color:#111;font-size:14px;font-weight:700;margin:0 0 10px;">Hey ${fn},</p>
+      <p style="color:#555;font-size:13px;line-height:1.55;margin:0 0 20px;">You've been added as a clinician. Use the credentials below to log in via the <strong>Clinician</strong> tab.</p>
+      <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border-collapse:separate;border:1px solid #e4e4e4;border-radius:8px;overflow:hidden;margin-bottom:22px;">
         <tr>
-          <td style="padding:10px 14px;border-bottom:1px solid #222;">
-            <div style="font-size:10px;color:#888;letter-spacing:.08em;margin-bottom:3px;">USERNAME</div>
-            <div style="font-size:16px;font-weight:700;color:#f0f0eb;">${username}</div>
+          <td style="padding:14px 18px;border-bottom:1px solid #eee;background:#fafafa;">
+            <div style="font-size:10px;color:#888;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;">Username</div>
+            <div style="font-size:16px;font-weight:700;color:#111;">${username}</div>
           </td>
         </tr>
         <tr>
-          <td style="padding:10px 14px;background:#C4C4C4;">
-            <div style="font-size:10px;color:rgba(0,0,0,.6);letter-spacing:.08em;margin-bottom:3px;">PASSWORD</div>
-            <div style="font-size:20px;font-weight:900;color:#000;letter-spacing:.06em;">${password}</div>
+          <td style="padding:16px 18px;background:#ffffff;">
+            <div style="font-size:10px;color:#888;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;">Password</div>
+            <div style="font-size:22px;font-weight:900;color:#111;letter-spacing:.06em;line-height:1;">${password}</div>
           </td>
         </tr>
       </table>
-      <div style="text-align:center;margin-bottom:14px;">
-        <a href="https://officials-hub.github.io/ebo-camp/" style="display:inline-block;background:#C4C4C4;color:#000;font-weight:700;font-size:13px;padding:10px 24px;border-radius:6px;text-decoration:none;">Open Staff Portal →</a>
+      <div style="text-align:center;margin-bottom:18px;">
+        <a href="https://officials-hub.github.io/ebo-camp/" style="display:inline-block;background:#000000;color:#ffffff;font-weight:700;font-size:13px;letter-spacing:.06em;padding:13px 28px;border-radius:999px;text-decoration:none;">Open Staff Portal →</a>
       </div>
-      <p style="color:#555;font-size:11px;text-align:center;margin:0;">${CFG.CAMP_NAME} · April 30 – May 3, 2026</p>
+      <p style="color:#999;font-size:11px;text-align:center;margin:0;line-height:1.5;">${CFG.CAMP_NAME}<br>April 30 – May 3, 2026</p>
     </div>
   </div>`;
 }
@@ -2033,32 +2036,34 @@ function openProfile(id){
 
 // ═══ PIN EMAIL ═══
 function buildPinEmailHTML(camper){
-  return `<div style="max-width:420px;margin:0 auto;font-family:Arial,sans-serif;background:#111;border-radius:8px;overflow:hidden;">
-    <div style="background:#C4C4C4;padding:14px 18px;">
-      <div style="color:#fff;font-size:15px;font-weight:700;letter-spacing:1px;">ELEVATE BASKETBALL OFFICIATING CAMP</div>
-      <div style="color:rgba(255,255,255,.8);font-size:11px;margin-top:2px;">APRIL 30 – MAY 3, 2026</div>
+  const first=toTitle(camper.first_name);
+  const last=toTitle(camper.last_name);
+  return `<div style="max-width:480px;margin:0 auto;font-family:Arial,Helvetica,sans-serif;background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08);">
+    <div style="background:#000000;padding:18px 22px;">
+      <div style="color:#ffffff;font-size:15px;font-weight:800;letter-spacing:1.5px;line-height:1.2;">ELEVATE BASKETBALL OFFICIATING CAMP</div>
+      <div style="color:rgba(255,255,255,.7);font-size:11px;letter-spacing:1px;margin-top:4px;">APRIL 30 – MAY 3, 2026</div>
     </div>
-    <div style="padding:18px;">
-      <p style="color:#f0f0eb;font-size:13px;margin:0 0 6px">Hey ${camper.first_name},</p>
-      <p style="color:#aaa;font-size:12px;line-height:1.6;margin:0 0 16px">You're registered for the Elevate Basketball Officiating Camp. Use the credentials below to log in.</p>
-      <table style="width:100%;border-collapse:collapse;background:#1a1a1a;border-radius:6px;overflow:hidden;margin-bottom:16px;">
+    <div style="padding:24px 22px 22px;">
+      <p style="color:#111;font-size:14px;font-weight:700;margin:0 0 10px;">Hey ${first},</p>
+      <p style="color:#555;font-size:13px;line-height:1.55;margin:0 0 20px;">You're registered for the Elevate Basketball Officiating Camp. Use the credentials below to log in.</p>
+      <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border-collapse:separate;border:1px solid #e4e4e4;border-radius:8px;overflow:hidden;margin-bottom:22px;">
         <tr>
-          <td style="padding:10px 14px;border-bottom:1px solid #222;">
-            <div style="font-size:10px;color:#888;letter-spacing:.08em;margin-bottom:3px;">LAST NAME</div>
-            <div style="font-size:16px;font-weight:700;color:#f0f0eb;">${camper.last_name}</div>
+          <td style="padding:14px 18px;border-bottom:1px solid #eee;background:#fafafa;">
+            <div style="font-size:10px;color:#888;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;">Last Name</div>
+            <div style="font-size:16px;font-weight:700;color:#111;">${last}</div>
           </td>
         </tr>
         <tr>
-          <td style="padding:10px 14px;background:#C4C4C4;">
-            <div style="font-size:10px;color:rgba(0,0,0,.6);letter-spacing:.08em;margin-bottom:3px;">PIN</div>
-            <div style="font-size:22px;font-weight:900;color:#000;letter-spacing:.1em;">${camper.pin}</div>
+          <td style="padding:16px 18px;background:#ffffff;">
+            <div style="font-size:10px;color:#888;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;">PIN</div>
+            <div style="font-size:30px;font-weight:900;color:#111;letter-spacing:.14em;line-height:1;">${camper.pin}</div>
           </td>
         </tr>
       </table>
-      <div style="text-align:center;margin-bottom:14px;">
-        <a href="https://officials-hub.github.io/ebo-camp/" style="display:inline-block;background:#C4C4C4;color:#000;font-weight:700;font-size:13px;padding:10px 24px;border-radius:6px;text-decoration:none;">Open Camp Portal →</a>
+      <div style="text-align:center;margin-bottom:18px;">
+        <a href="https://officials-hub.github.io/ebo-camp/" style="display:inline-block;background:#000000;color:#ffffff;font-weight:700;font-size:13px;letter-spacing:.06em;padding:13px 28px;border-radius:999px;text-decoration:none;">Open Camp Portal →</a>
       </div>
-      <p style="color:#555;font-size:11px;text-align:center;margin:0;">${CFG.CAMP_NAME} · April 30 – May 3, 2026</p>
+      <p style="color:#999;font-size:11px;text-align:center;margin:0;line-height:1.5;">Elevate Basketball Officiating Camp<br>April 30 – May 3, 2026</p>
     </div>
   </div>`;
 }
