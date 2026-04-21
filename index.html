@@ -221,7 +221,7 @@ td{padding:9px 12px;border-bottom:1px solid var(--b1);vertical-align:middle;colo
 .score-boxes{display:flex;gap:5px;flex-wrap:wrap}
 .score-box{width:36px;height:36px;border-radius:var(--rs);border:2px solid var(--b3);background:var(--gray2);color:var(--tx3);font-family:'Oswald',sans-serif;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;user-select:none}
 .score-box:hover{border-color:var(--or);color:var(--or)}
-.score-box.sel{background:var(--or);border-color:var(--or);color:#000}
+.score-box.sel{background:var(--or);border-color:var(--or);color:#fff}
 
 /* YN BUTTONS */
 .yn-row{display:flex;align-items:center;gap:12px;margin-bottom:8px}
@@ -260,7 +260,7 @@ td{padding:9px 12px;border-bottom:1px solid var(--b1);vertical-align:middle;colo
 .fchips{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
 .fchip{padding:7px 14px;border-radius:20px;border:1px solid var(--b3);background:transparent;color:var(--tx2);font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:.06em;cursor:pointer;transition:all .2s}
 .fchip:hover{border-color:var(--or);color:var(--or)}
-.fchip.on{background:var(--or);color:#000;border-color:var(--or)}
+.fchip.on{background:var(--or);color:#fff;border-color:var(--or)}
 
 /* CSV UPLOAD */
 .upload-zone{border:2px dashed var(--b3);border-radius:var(--r);padding:24px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:10px}
@@ -360,7 +360,7 @@ td{padding:9px 12px;border-bottom:1px solid var(--b1);vertical-align:middle;colo
 .chat-msg.mine{align-self:flex-end;align-items:flex-end}
 .chat-msg.other{align-self:flex-start;align-items:flex-start}
 .chat-bubble{padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.5;word-break:break-word}
-.chat-msg.mine .chat-bubble{background:var(--or);color:#000;border-bottom-right-radius:4px}
+.chat-msg.mine .chat-bubble{background:var(--or);color:#fff;border-bottom-right-radius:4px}
 .chat-msg.other .chat-bubble{background:#e8e4de;color:#1a1a1a;border-bottom-left-radius:4px}
 .chat-msg.admin-msg .chat-bubble{background:linear-gradient(135deg,#1a0a00,#2a1200);border:1px solid var(--orb);color:#fff}
 .chat-meta{font-size:10px;color:var(--tx3);margin-top:3px;display:flex;align-items:center;gap:5px}
@@ -839,7 +839,7 @@ if('serviceWorker' in navigator){
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:7px">
 <div class="stitle" style="margin:0">OFFICIAL <span>RANKINGS</span></div>
 <button class="btn bor bsm" onclick="renderAdminRankings()" type="button">🔄 Refresh</button>
-<button class="btn bor bsm" onclick="generateAllReports()" type="button" style="background:var(--or);color:#000;border-color:var(--or)">📄 Export All Reports</button>
+<button class="btn bor bsm" onclick="generateAllReports()" type="button" style="background:var(--or);color:#fff;border-color:var(--or)">📄 Export All Reports</button>
 <button class="btn bor bsm" onclick="generateCamperReport(null,'prompt')" type="button">📄 Single Report</button>
 </div>
 <div class="fchips" id="rankFilter"></div>
@@ -896,7 +896,7 @@ if('serviceWorker' in navigator){
 <div class="tc" id="at-chat">
 <!-- Chat room tabs -->
 <div style="display:flex;gap:0;margin-bottom:12px;border:1px solid var(--b2);border-radius:var(--r);overflow:hidden">
-  <button id="adminChatTab-general" onclick="switchAdminChatRoom('general')" style="flex:1;padding:10px;background:var(--or);color:#000;border:none;font-family:'Oswald',sans-serif;font-size:13px;font-weight:700;letter-spacing:.06em;cursor:pointer">CAMP CHAT</button>
+  <button id="adminChatTab-general" onclick="switchAdminChatRoom('general')" style="flex:1;padding:10px;background:var(--or);color:#fff;border:none;font-family:'Oswald',sans-serif;font-size:13px;font-weight:700;letter-spacing:.06em;cursor:pointer">CAMP CHAT</button>
   <button id="adminChatTab-staff" onclick="switchAdminChatRoom('staff')" style="flex:1;padding:10px;background:var(--gray2);color:var(--tx2);border:none;border-left:1px solid var(--b2);font-family:'Oswald',sans-serif;font-size:13px;font-weight:700;letter-spacing:.06em;cursor:pointer">STAFF ROOM 🔒</button>
 </div>
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
@@ -916,7 +916,7 @@ if('serviceWorker' in navigator){
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
   <div class="stitle" style="margin:0">DAILY <span>VIEW</span></div>
   <div style="display:flex;gap:6px">
-    <button class="btn bsec bsm" onclick="setDailyDay('Thursday April 30, 2026',this)" id="dvd1" style="background:var(--or);color:#000">Thu 4/30</button>
+    <button class="btn bsec bsm" onclick="setDailyDay('Thursday April 30, 2026',this)" id="dvd1" style="background:var(--or);color:#fff">Thu 4/30</button>
     <button class="btn bsec bsm" onclick="setDailyDay('Friday May 1, 2026',this)" id="dvd2">Fri 5/1</button>
     <button class="btn bsec bsm" onclick="setDailyDay('Saturday May 2, 2026',this)" id="dvd3">Sat 5/2</button>
     <button class="btn bsec bsm" onclick="setDailyDay('Sunday May 3, 2026',this)" id="dvd4">Sun 5/3</button>
@@ -946,7 +946,7 @@ if('serviceWorker' in navigator){
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
   <div class="stitle" style="margin:0">DAILY <span>VIEW</span></div>
   <div style="display:flex;gap:6px">
-    <button class="btn bsec bsm" onclick="setDailyDay('Thursday April 30, 2026',this)" id="dvd1" style="background:var(--or);color:#000">Thu 4/30</button>
+    <button class="btn bsec bsm" onclick="setDailyDay('Thursday April 30, 2026',this)" id="dvd1" style="background:var(--or);color:#fff">Thu 4/30</button>
     <button class="btn bsec bsm" onclick="setDailyDay('Friday May 1, 2026',this)" id="dvd2">Fri 5/1</button>
     <button class="btn bsec bsm" onclick="setDailyDay('Saturday May 2, 2026',this)" id="dvd3">Sat 5/2</button>
     <button class="btn bsec bsm" onclick="setDailyDay('Sunday May 3, 2026',this)" id="dvd4">Sun 5/3</button>
