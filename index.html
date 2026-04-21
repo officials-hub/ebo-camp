@@ -1159,7 +1159,8 @@ if('serviceWorker' in navigator){
 const CFG={
   SUPA_URL:'https://ixmshgnvhbwvtrwxtuna.supabase.co',
   SUPA_KEY:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml4bXNoZ252aGJ3dnRyd3h0dW5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2MjY0ODAsImV4cCI6MjA5MjIwMjQ4MH0.FlmOlw_xK-nqNotVdSroC_bk6Lf9GD35PFIkrs11i4s',
-SENDGRID_URL:'https://ebo-camp-emails.netlify.app/.netlify/functions/send-email',  FROM_EMAIL:'EBO Camp <onboarding@resend.dev>',
+  EMAIL_FN_URL:'https://ebo-camp-emails.netlify.app/.netlify/functions/send-email',
+  FROM_EMAIL:'EBO Camp <onboarding@resend.dev>',
   CAMP_NAME:'Elevate Basketball Officiating Camp',
   CATS:['Mechanics','Rules Knowledge','Positioning','Game Management','Communication','Professionalism']
 };
@@ -1498,7 +1499,7 @@ async function submitAdminEval(){
       await loadAll();
       const camperEvals=evaluations.filter(e=>e.camper_id===cid);
       try{
-        const res=await fetch(CFG.SENDGRID_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:camper.email,from:CFG.FROM_EMAIL,subject:`${CFG.CAMP_NAME} — Your Evaluation Results`,html:buildEmailHTML(camper,camperEvals)})});
+        const res=await fetch(CFG.EMAIL_FN_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:camper.email,from:CFG.FROM_EMAIL,subject:`${CFG.CAMP_NAME} — Your Evaluation Results`,html:buildEmailHTML(camper,camperEvals)})});
         st.innerHTML=res.ok?'<div class="email-ok">✓ Saved & emailed</div>':'<div class="email-ok">✓ Saved</div><div class="email-err">✕ Email failed</div>';
       }catch(e){st.innerHTML='<div class="email-ok">✓ Saved</div><div class="email-err">✕ Email failed</div>';}
     }else{st.innerHTML='<div class="email-ok">✓ Saved (no email on file)</div>';}
@@ -1791,7 +1792,7 @@ async function saveClinician(){
     await supa('clinicians','POST',{name:fullName});
     if(document.getElementById('clSendEmail').checked&&email){
       try{
-        await fetch(CFG.SENDGRID_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        await fetch(CFG.EMAIL_FN_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
           to:email,from:CFG.FROM_EMAIL,
           subject:'EBO Camp — Your Clinician Login',
           html:buildClinicianEmailHTML(first,last,user,pass)
@@ -2074,7 +2075,7 @@ async function sendPinEmail(id){
   const btn=document.getElementById('pinbtn-'+id);
   if(btn){btn.disabled=true;btn.textContent='⏳';}
   try{
-    const res=await fetch(CFG.SENDGRID_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+    const res=await fetch(CFG.EMAIL_FN_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       to:c.email,from:CFG.FROM_EMAIL,
       subject:`EBO Camp — Your Login PIN`,
       html:buildPinEmailHTML(c)
@@ -2099,7 +2100,7 @@ async function resetCamperPin(id){
     if(idx >= 0) campers[idx].pin = newPin;
     // Email new PIN if they have an email
     if(c.email){
-      await fetch(CFG.SENDGRID_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      await fetch(CFG.EMAIL_FN_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
         to: c.email,
         from: CFG.FROM_EMAIL,
         subject: 'EBO Camp — Your New Login PIN',
@@ -2139,7 +2140,7 @@ async function sendAllPins(){
   let sent=0,failed=0;
   for(const c of withEmail){
     try{
-      const res=await fetch(CFG.SENDGRID_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      const res=await fetch(CFG.EMAIL_FN_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
         to:c.email,from:CFG.FROM_EMAIL,
         subject:`EBO Camp — Your Login PIN`,
         html:buildPinEmailHTML(c)
@@ -2579,7 +2580,7 @@ async function sendEmailBlast(){
           disposition: 'attachment'
         }];
       }
-      await fetch(CFG.SENDGRID_URL, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+      await fetch(CFG.EMAIL_FN_URL, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
       sent++;
     }catch(e){ failed++; }
     await new Promise(r=>setTimeout(r,120));
@@ -2634,7 +2635,7 @@ async function sendChatEmailBlast(msg,from){
   const withEmail=campers.filter(c=>c.email);
   for(const c of withEmail){
     try{
-      await fetch(CFG.SENDGRID_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      await fetch(CFG.EMAIL_FN_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
         to:c.email,from:CFG.FROM_EMAIL,
         subject:`EBO Camp Announcement from ${from}`,
         html:`<div style="max-width:420px;margin:0 auto;font-family:Arial,sans-serif;background:#111;border-radius:8px;overflow:hidden;">
@@ -2997,7 +2998,7 @@ async function emailCampDocs(){
   let sent=0;
   for(const email of emails){
     try{
-      await fetch(CFG.SENDGRID_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      await fetch(CFG.EMAIL_FN_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
         to:email,from:CFG.FROM_EMAIL,
         subject:'Elevate Basketball Officiating Camp — Camp Documents',
         html:`<div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;padding:24px;font-family:Arial,sans-serif;color:#1a1a1a;border:1px solid #e0ddd8"><h2 style="color:#000000;margin:0 0 12px">📄 Camp Documents</h2><p style="color:#555;margin:0 0 16px">Documents shared for the Elevate Basketball Officiating Camp:</p>${docLinks}<p style="color:#999;font-size:11px;margin-top:20px">Elevate Basketball Officiating Camp</p></div>`
