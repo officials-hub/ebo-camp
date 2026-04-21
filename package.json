@@ -1,0 +1,16 @@
+{
+  "name": "ebo-camp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "EBO Camp portal, Netlify email/webhook functions, and one-time imports",
+  "scripts": {
+    "import": "node scripts/import-existing.js"
+  },
+  "devDependencies": {
+    "dotenv": "^16.4.5",
+    "xlsx": "^0.18.5"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

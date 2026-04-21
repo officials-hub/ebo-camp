@@ -1,0 +1,8 @@
+node_modules/
+.env
+.env.local
+.DS_Store
+
+# Source data — contains camper PII, never commit
+campers-2026.xlsx
+*.xlsx
