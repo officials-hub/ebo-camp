@@ -2,8 +2,9 @@
  * EBO Camp — JotForm → Supabase Camper Auto-Create
  *
  * Receives JotForm submissions (application/x-www-form-urlencoded with a
- * `rawRequest` field containing JSON), extracts camper fields, inserts into
- * the Supabase `campers` table, and fires off a welcome email with the PIN.
+ * `rawRequest` field containing JSON), extracts camper fields, and inserts
+ * into the Supabase `campers` table. No welcome email — admins send PINs
+ * manually from the portal via "Send All PINs".
  *
  * Env vars (set in Netlify dashboard):
  *   SUPABASE_URL
@@ -13,8 +14,6 @@
  * don't want silent duplication. Errors are logged to Netlify function logs.
  */
 
-const PORTAL_URL = 'https://officials-hub.github.io/ebo-camp/';
-const SEND_EMAIL_URL = 'https://ebo-camp-emails.netlify.app/.netlify/functions/send-email';
 const DEFAULT_STATE = 'CO';
 
 exports.handler = async (event) => {
@@ -80,21 +79,6 @@ exports.handler = async (event) => {
     }
 
     console.log(`[jotform-webhook] created: ${camper.first_name} ${camper.last_name} (${camper.email})`);
-
-    try {
-      await fetch(SEND_EMAIL_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: camper.email,
-          from: 'EBO Camp <onboarding@resend.dev>',
-          subject: 'Welcome to EBO Camp — Your Login PIN',
-          html: buildWelcomeEmail(camper.first_name, camper.pin),
-        }),
-      });
-    } catch (e) {
-      console.warn('[jotform-webhook] welcome email dispatch failed:', e.message);
-    }
 
     return ok({ note: 'created', email: camper.email });
   } catch (err) {
@@ -188,30 +172,4 @@ function buildBio(f) {
   push('T-shirt Size', f.tshirt);
   push('Scheduling Conflicts', f.conflicts);
   return lines.join('\n');
-}
-
-function buildWelcomeEmail(firstName, pin) {
-  const fn = (firstName || '').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
-  return `<div style="max-width:480px;margin:0 auto;font-family:Arial,Helvetica,sans-serif;background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08);">
-    <div style="background:#000000;padding:18px 22px;border-bottom:3px solid #A8A8A8;">
-      <div style="color:#ffffff;font-size:15px;font-weight:800;letter-spacing:1.5px;line-height:1.2;">ELEVATE BASKETBALL OFFICIATING CAMP</div>
-      <div style="color:#C0C0C0;font-size:11px;letter-spacing:1px;margin-top:4px;">APRIL 30 – MAY 3, 2026</div>
-    </div>
-    <div style="padding:24px 22px 22px;">
-      <p style="color:#111;font-size:14px;font-weight:700;margin:0 0 10px;">Welcome, ${fn}!</p>
-      <p style="color:#555;font-size:13px;line-height:1.55;margin:0 0 20px;">Your registration is confirmed. Save this PIN — you'll use your last name + PIN to log into the camp portal.</p>
-      <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border-collapse:separate;border:1px solid #e4e4e4;border-radius:8px;overflow:hidden;margin-bottom:22px;">
-        <tr>
-          <td style="padding:16px 18px;background:#fafafa;">
-            <div style="font-size:10px;color:#888;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;">Your PIN</div>
-            <div style="font-size:30px;font-weight:900;color:#111;letter-spacing:.14em;line-height:1;">${pin}</div>
-          </td>
-        </tr>
-      </table>
-      <div style="text-align:center;margin-bottom:18px;">
-        <a href="${PORTAL_URL}" style="display:inline-block;background:#000000;color:#ffffff;font-weight:700;font-size:13px;letter-spacing:.06em;padding:13px 28px;border-radius:999px;text-decoration:none;">Open Camp Portal →</a>
-      </div>
-      <p style="color:#999;font-size:11px;text-align:center;margin:0;line-height:1.5;">Elevate Basketball Officiating Camp<br>April 30 – May 3, 2026</p>
-    </div>
-  </div>`;
 }
