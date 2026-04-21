@@ -33,7 +33,7 @@ const COL = {
   area: 'What Area do you work in?',
   goals: 'What are your goals for attending Elevate Basketball Officiate Camp?',
   tshirt: 'T-shirt Size',
-  conflicts: 'If you have any conflicts with scheduling games on Friday night please indicate below. We will accommodate accordingly.',
+  conflicts: 'If you have any conflicts with scheduling games on Friday night, or all day Saturday or Sunday, please list them below.  We will do our best to schedule games around conflicts you may have.   We expect you to work the games that you are assigned, be ready and on time to officiate, and commit to attend all classroom sessions.',
 };
 
 async function main() {
@@ -66,7 +66,8 @@ async function main() {
   }
 
   let imported = 0;
-  let skipped = 0;
+  let duplicates = 0;
+  let failures = 0;
 
   for (const row of rows) {
     const first = String(row[COL.first] || '').trim();
@@ -75,7 +76,7 @@ async function main() {
 
     if (!email || !first || !last) {
       console.log(`⊘ skipped (missing fields): "${first}" "${last}" "${email}"`);
-      skipped++;
+      failures++;
       continue;
     }
 
@@ -85,13 +86,13 @@ async function main() {
     );
     if (!existsRes.ok) {
       console.log(`✗ dupcheck failed for ${email}: ${existsRes.status} ${await existsRes.text()}`);
-      skipped++;
+      failures++;
       continue;
     }
     const existing = await existsRes.json();
     if (Array.isArray(existing) && existing.length > 0) {
       console.log(`⊘ skipped (duplicate): ${email}`);
-      skipped++;
+      duplicates++;
       continue;
     }
 
@@ -103,7 +104,7 @@ async function main() {
       city: String(row[COL.city] || '').trim(),
       state: DEFAULT_STATE,
       pin: String(Math.floor(1000 + Math.random() * 9000)),
-      bio_resume: buildBio({
+      bio: buildBio({
         level: row[COL.level],
         yrs3: row[COL.yrs3],
         yrs2: row[COL.yrs2],
@@ -121,7 +122,7 @@ async function main() {
     });
     if (!insRes.ok) {
       console.log(`✗ insert failed for ${email}: ${insRes.status} ${await insRes.text()}`);
-      skipped++;
+      failures++;
       continue;
     }
 
@@ -129,7 +130,7 @@ async function main() {
     imported++;
   }
 
-  console.log(`\nImported ${imported}, Skipped ${skipped} duplicates`);
+  console.log(`\nImported ${imported}, Skipped ${duplicates} duplicates, ${failures} failures`);
 }
 
 function supabaseHeaders() {

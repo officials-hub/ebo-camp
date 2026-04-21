@@ -160,9 +160,9 @@ function extractCamper(sub) {
   const tshirt    = readVal(findByKey('tshirt')) || readVal(findByKey('t-shirt')) || readVal(findByKey('size'));
   const conflicts = readVal(findByKey('conflict'));
 
-  const bio_resume = buildBio({ level, yrs3, yrs2, area, goals, tshirt, conflicts });
+  const bio = buildBio({ level, yrs3, yrs2, area, goals, tshirt, conflicts });
 
-  return { first_name: first, last_name: last, email, phone, city, state, bio_resume };
+  return { first_name: first, last_name: last, email, phone, city, state, bio };
 }
 
 function readVal(entry) {
