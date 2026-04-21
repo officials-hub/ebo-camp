@@ -657,8 +657,7 @@ if('serviceWorker' in navigator){
 </div>
 <div id="seCards"></div>
 <div class="eval-card" id="seYnCard">
-<div class="yn-row"><div class="yn-lbl">RMAC Ready</div><div class="yn-btns"><button class="yn-btn" onclick="setYN('rmac','yes',this)">Yes</button><button class="yn-btn" onclick="setYN('rmac','no',this)">No</button></div></div>
-<div class="followup" id="seConfFollowup"><div class="yn-row"><div class="yn-lbl">Conference Ready</div><div class="yn-btns"><button class="yn-btn" onclick="setYN('conference','yes',this)">Yes</button><button class="yn-btn" onclick="setYN('conference','no',this)">No</button></div></div></div>
+<div class="yn-row"><div class="yn-lbl">Conference Ready</div><div class="yn-btns"><button class="yn-btn" onclick="setYN('conference','yes',this)">Yes</button><button class="yn-btn" onclick="setYN('conference','no',this)">No</button></div></div>
 <div class="yn-row" style="margin-bottom:0"><div class="yn-lbl">Top 10 Camper</div><div class="yn-btns"><button class="yn-btn" onclick="setYN('top10','yes',this)">Yes</button><button class="yn-btn" onclick="setYN('top10','no',this)">No</button></div></div>
 </div>
 <div class="eval-card"><div class="eval-cat" style="margin-bottom:8px">Comments</div><textarea class="ftarea" id="seComments" placeholder="Additional observations..."></textarea></div>
@@ -830,8 +829,7 @@ if('serviceWorker' in navigator){
 </div>
 <div id="aeCards"></div>
 <div class="eval-card" id="aeYnCard">
-<div class="yn-row"><div class="yn-lbl">RMAC Ready</div><div class="yn-btns"><button class="yn-btn" onclick="setYN('rmac','yes',this,'ae')">Yes</button><button class="yn-btn" onclick="setYN('rmac','no',this,'ae')">No</button></div></div>
-<div class="followup" id="aeConfFollowup"><div class="yn-row"><div class="yn-lbl">Conference Ready</div><div class="yn-btns"><button class="yn-btn" onclick="setYN('conference','yes',this,'ae')">Yes</button><button class="yn-btn" onclick="setYN('conference','no',this,'ae')">No</button></div></div></div>
+<div class="yn-row"><div class="yn-lbl">Conference Ready</div><div class="yn-btns"><button class="yn-btn" onclick="setYN('conference','yes',this,'ae')">Yes</button><button class="yn-btn" onclick="setYN('conference','no',this,'ae')">No</button></div></div>
 <div class="yn-row" style="margin-bottom:0"><div class="yn-lbl">Top 10 Camper</div><div class="yn-btns"><button class="yn-btn" onclick="setYN('top10','yes',this,'ae')">Yes</button><button class="yn-btn" onclick="setYN('top10','no',this,'ae')">No</button></div></div>
 </div>
 <div class="eval-card"><div class="eval-cat" style="margin-bottom:8px">Comments</div><textarea class="ftarea" id="aeComments" placeholder="Additional observations..."></textarea></div>
@@ -1170,8 +1168,8 @@ const CFG={
 // ═══ STATE ═══
 let campers=[],evaluations=[],clinicians=[],staffList=[],settings={};
 let CU=null,CR=null; // current user, current role
-let ynState={rmac:null,conference:null,top10:null};
-let ynStateAe={rmac:null,conference:null,top10:null};
+let ynState={conference:null,top10:null};
+let ynStateAe={conference:null,top10:null};
 let rankClinician=null;
 let rankSort='overall';
 let csvParsed=[];
@@ -1435,10 +1433,9 @@ function updateOverallScore(pfx){
 }
 function resetEvalForm(pfx){
   CFG.CATS.forEach((_,i)=>{document.querySelectorAll(`#${pfx}ScB_${i} .score-box`).forEach(b=>b.classList.remove('sel'));document.getElementById(`${pfx}ScD_${i}`).textContent='—';});
-  if(pfx==='se'){document.getElementById('seComments').value='';document.getElementById('seDate').value=new Date().toISOString().split('T')[0];document.getElementById('seCourt').value='';document.getElementById('seTime').value='';document.getElementById('seStatus').innerHTML='';ynState={rmac:null,conference:null,top10:null};}
-  if(pfx==='ae'){document.getElementById('aeComments').value='';document.getElementById('aeDate').value=new Date().toISOString().split('T')[0];document.getElementById('aeCourt').value='';document.getElementById('aeTime').value='';document.getElementById('aeStatus').innerHTML='';ynStateAe={rmac:null,conference:null,top10:null};}
+  if(pfx==='se'){document.getElementById('seComments').value='';document.getElementById('seDate').value=new Date().toISOString().split('T')[0];document.getElementById('seCourt').value='';document.getElementById('seTime').value='';document.getElementById('seStatus').innerHTML='';ynState={conference:null,top10:null};}
+  if(pfx==='ae'){document.getElementById('aeComments').value='';document.getElementById('aeDate').value=new Date().toISOString().split('T')[0];document.getElementById('aeCourt').value='';document.getElementById('aeTime').value='';document.getElementById('aeStatus').innerHTML='';ynStateAe={conference:null,top10:null};}
   document.querySelectorAll(`#${pfx}YnCard .yn-btn`).forEach(b=>b.classList.remove('yes','no'));
-  const fu=document.getElementById(pfx+'ConfFollowup');if(fu)fu.classList.remove('show');
   updateOverallScore(pfx);
 }
 function setYN(field,val,btn,pfx){
@@ -1447,7 +1444,6 @@ function setYN(field,val,btn,pfx){
   st[field]=val==='yes';
   btn.parentElement.querySelectorAll('.yn-btn').forEach(b=>b.classList.remove('yes','no'));
   btn.classList.add(val==='yes'?'yes':'no');
-  if(field==='rmac'){const fu=document.getElementById(pfx+'ConfFollowup');if(val==='yes')fu.classList.add('show');else{fu.classList.remove('show');st.conference=null;fu.querySelectorAll('.yn-btn').forEach(b=>b.classList.remove('yes','no'));}}
 }
 
 // ═══ SUBMIT EVAL (staff) ═══
@@ -1462,7 +1458,7 @@ async function submitStaffEval(){
   const btn=document.getElementById('seSubmitBtn');const st=document.getElementById('seStatus');
   btn.disabled=true;btn.innerHTML='<span class="spinner"></span>';st.innerHTML='';
   const scores={};CFG.CATS.forEach((cat,i)=>{scores[cat.toLowerCase().replace(/\s+/g,'_')]=getScoreVal('se',i);});
-  scores.rmac_ready=ynState.rmac;scores.conference_ready=ynState.conference;scores.top10=ynState.top10;
+  scores.conference_ready=ynState.conference;scores.top10=ynState.top10;
   const comments=document.getElementById('seComments').value.trim();
   const overall=parseFloat(document.getElementById('seOverall').textContent);
   try{
@@ -1484,7 +1480,7 @@ async function submitAdminEval(){
   const btn=document.getElementById('aeSubmitBtn');const st=document.getElementById('aeStatus');
   btn.disabled=true;btn.innerHTML='<span class="spinner"></span>';st.innerHTML='';
   const scores={};CFG.CATS.forEach((cat,i)=>{scores[cat.toLowerCase().replace(/\s+/g,'_')]=getScoreVal('ae',i);});
-  scores.rmac_ready=ynStateAe.rmac;scores.conference_ready=ynStateAe.conference;scores.top10=ynStateAe.top10;
+  scores.conference_ready=ynStateAe.conference;scores.top10=ynStateAe.top10;
   const comments=document.getElementById('aeComments').value.trim();
   const overall=parseFloat(document.getElementById('aeOverall').textContent);
   const evalDate=document.getElementById('aeDate').value;
@@ -1711,7 +1707,7 @@ function renderAdminClinicians(){
   const tbody=document.getElementById('aclbody');
   if(!clinicians.length){tbody.innerHTML='<tr><td colspan="3"><div class="empty"><span class="ei">🏁</span><div class="et">No Clinicians Yet</div></div></td></tr>';return;}
   tbody.innerHTML='';
-  clinicians.forEach((c,i)=>{const tr=document.createElement('tr');tr.innerHTML=`<td class="tdr">${i+1}</td><td class="tdm"><span style="cursor:pointer;color:var(--or);text-decoration:underline" onclick="viewClinicianRankings('${c.name}')">${c.name}</span></td><td style="display:flex;gap:6px"><button class="btn bsec bsm" onclick="openEditClinician('${c.id}')">Edit</button><button class="btn bred bsm" onclick="delClinician('${c.id}')">Del</button></td>`;tbody.appendChild(tr);});
+  clinicians.forEach((c,i)=>{const tr=document.createElement('tr');tr.innerHTML=`<td class="tdr">${i+1}</td><td class="tdm"><span style="cursor:pointer;color:var(--or);text-decoration:underline" onclick="viewClinicianRankings('${c.name}')">${c.name}</span></td><td style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn bsec bsm" title="Resend login credentials" onclick="resendClinicianLogin('${c.id}')">Login</button><button class="btn bsec bsm" onclick="openEditClinician('${c.id}')">Edit</button><button class="btn bred bsm" onclick="delClinician('${c.id}')">Del</button></td>`;tbody.appendChild(tr);});
 }
 let _editClinicianId=null;
 let _editStaffId=null;
@@ -1736,6 +1732,29 @@ function openEditClinician(clinicianId){
   document.getElementById('clSendEmail').checked=false;
   document.getElementById('clErr').style.display='none';
   openModal('mClinician');
+}
+
+async function resendClinicianLogin(id){
+  const cl=clinicians.find(c=>c.id==id);
+  if(!cl){toast('Clinician not found',true);return;}
+  const parts=cl.name.split(' ');
+  const first=parts[0]||'';
+  const last=parts.slice(1).join(' ')||'';
+  const staff=staffList.find(s=>s.first_name===first&&s.last_name===last);
+  if(!staff){toast('No matching staff record — add username/password via Edit first',true);return;}
+  const email=prompt(`Email to resend login for ${cl.name}:`);
+  if(email===null)return;
+  const e=email.trim().toLowerCase();
+  if(!e||!e.includes('@')){toast('Invalid email',true);return;}
+  try{
+    const res=await fetch(CFG.EMAIL_FN_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      to:e,from:CFG.FROM_EMAIL,
+      subject:'EBO Camp — Your Clinician Login',
+      html:buildClinicianEmailHTML(first,last,staff.username,staff.password)
+    })});
+    if(res.ok)toast(`Login sent to ${e}`);
+    else toast('Email failed',true);
+  }catch(err){console.error(err);toast('Email error',true);}
 }
 
 function resetClinicianModal(){
@@ -1846,7 +1865,7 @@ async function delClinician(id){const ok=await cf('Remove this clinician?','Remo
 // ═══ RANKINGS ═══
 function buildCamperScores(){
   const cs={};
-  campers.forEach(c=>{const ev=evaluations.filter(e=>e.camper_id===c.id);if(!ev.length)return;const ca={};CFG.CATS.forEach(cat=>{const k=cat.toLowerCase().replace(/\s+/g,'_');const v=ev.map(e=>e.scores?.[k]).filter(v=>v!=null);ca[cat]=v.length?v.reduce((a,b)=>a+b,0)/v.length:0;});const ov=ev.map(e=>e.overall_score).filter(v=>v!=null);const o=ov.length?ov.reduce((a,b)=>a+b,0)/ov.length:0;const h=Math.max(ev.length/2,1);cs[c.id]={camper:c,catAverages:ca,overall:o,evalCount:ev.length,rmac:ev.filter(e=>e.scores?.rmac_ready===true).length>=h,conference:ev.filter(e=>e.scores?.conference_ready===true).length>=h,top10:ev.filter(e=>e.scores?.top10===true).length>=h,clinicians:[...new Set(ev.map(e=>e.clinician_name).filter(Boolean))]};});
+  campers.forEach(c=>{const ev=evaluations.filter(e=>e.camper_id===c.id);if(!ev.length)return;const ca={};CFG.CATS.forEach(cat=>{const k=cat.toLowerCase().replace(/\s+/g,'_');const v=ev.map(e=>e.scores?.[k]).filter(v=>v!=null);ca[cat]=v.length?v.reduce((a,b)=>a+b,0)/v.length:0;});const ov=ev.map(e=>e.overall_score).filter(v=>v!=null);const o=ov.length?ov.reduce((a,b)=>a+b,0)/ov.length:0;const h=Math.max(ev.length/2,1);cs[c.id]={camper:c,catAverages:ca,overall:o,evalCount:ev.length,conference:ev.filter(e=>e.scores?.conference_ready===true).length>=h,top10:ev.filter(e=>e.scores?.top10===true).length>=h,clinicians:[...new Set(ev.map(e=>e.clinician_name).filter(Boolean))]};});
   return cs;
 }
 function renderAdminRankings(){
@@ -1854,18 +1873,17 @@ function renderAdminRankings(){
   // Clinician filter indicator
   if(rankClinician){const clr=document.createElement('div');clr.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12px;color:var(--tx2)';clr.innerHTML=`Showing: <strong style="color:var(--or)">${rankClinician}</strong>'s evaluations &nbsp;<button class="btn bsec bsm" onclick="rankClinician=null;renderAdminRankings()">✕ Clear</button>`;fr.appendChild(clr);}
   const chipWrap=document.createElement('div');chipWrap.style.cssText='display:flex;flex-wrap:wrap;gap:6px';
-  ['overall',...CFG.CATS,'top10','rmac'].forEach(cat=>{const c=document.createElement('button');c.className='fchip'+(cat===rankSort?' on':'');c.textContent=cat==='overall'?'Overall':cat==='top10'?'Top 10':cat==='rmac'?'RMAC Ready':cat;c.onclick=()=>{rankSort=cat;renderAdminRankings();};chipWrap.appendChild(c);});
+  ['overall',...CFG.CATS,'top10'].forEach(cat=>{const c=document.createElement('button');c.className='fchip'+(cat===rankSort?' on':'');c.textContent=cat==='overall'?'Overall':cat==='top10'?'Top 10':cat;c.onclick=()=>{rankSort=cat;renderAdminRankings();};chipWrap.appendChild(c);});
   fr.appendChild(chipWrap);
   const cs=buildCamperScores();
   let sorted=Object.values(cs);
   if(rankClinician){sorted=sorted.filter(e=>e.clinicians.includes(rankClinician));}
   if(rankSort==='top10'){sorted=sorted.filter(e=>e.top10);sorted.sort((a,b)=>b.overall-a.overall);}
-  else if(rankSort==='rmac'){sorted=sorted.filter(e=>e.rmac);sorted.sort((a,b)=>b.overall-a.overall);}
   else if(rankSort==='overall')sorted.sort((a,b)=>b.overall-a.overall);
   else sorted.sort((a,b)=>(b.catAverages[rankSort]||0)-(a.catAverages[rankSort]||0));
   const con=document.getElementById('arankcon');
-  if(!sorted.length){con.innerHTML='<div class="empty"><span class="ei">'+(rankSort==='top10'?'⭐':rankSort==='rmac'?'✅':'📊')+'</span><div class="et">'+(rankSort==='top10'?'No Top 10 campers yet':rankSort==='rmac'?'No RMAC Ready campers yet':'No evaluations yet')+'</div></div>';return;}
-  con.innerHTML=sorted.map((e,idx)=>{const rc=idx<3?'r'+(idx+1):'';const bars=CFG.CATS.map(cat=>{const v=e.catAverages[cat]||0;const p=(v/10)*100;return`<div class="rank-bar-row"><span class="rank-bar-lbl">${cat.length>8?cat.substring(0,8):cat}</span><div class="rank-bar-bg"><div class="rank-bar-fill" style="width:${p}%"></div></div><span class="rank-bar-val">${v.toFixed(1)}</span></div>`;}).join('');let tags='';if(e.rmac)tags+='<span class="bdg bdgrn">RMAC</span>';if(e.conference)tags+='<span class="bdg bdo">Conference</span>';if(e.top10)tags+='<span class="bdg bdgold">Top 10</span>';return`<div class="rank-card ${rc}"><div class="rank-num">${idx+1}</div><div class="rank-info"><div class="rank-name">${e.camper.first_name} ${e.camper.last_name}</div><div class="rank-det">${e.evalCount} eval${e.evalCount!==1?'s':''} · ${e.clinicians.join(', ')}</div>${tags?`<div class="rank-tags">${tags}</div>`:''}<div class="rank-bars">${bars}</div></div><div class="rank-avg">${e.overall.toFixed(1)}</div></div>`;}).join('');
+  if(!sorted.length){con.innerHTML='<div class="empty"><span class="ei">'+(rankSort==='top10'?'⭐':'📊')+'</span><div class="et">'+(rankSort==='top10'?'No Top 10 campers yet':'No evaluations yet')+'</div></div>';return;}
+  con.innerHTML=sorted.map((e,idx)=>{const rc=idx<3?'r'+(idx+1):'';const bars=CFG.CATS.map(cat=>{const v=e.catAverages[cat]||0;const p=(v/10)*100;return`<div class="rank-bar-row"><span class="rank-bar-lbl">${cat.length>8?cat.substring(0,8):cat}</span><div class="rank-bar-bg"><div class="rank-bar-fill" style="width:${p}%"></div></div><span class="rank-bar-val">${v.toFixed(1)}</span></div>`;}).join('');let tags='';if(e.conference)tags+='<span class="bdg bdo">Conference</span>';if(e.top10)tags+='<span class="bdg bdgold">Top 10</span>';return`<div class="rank-card ${rc}"><div class="rank-num">${idx+1}</div><div class="rank-info"><div class="rank-name">${e.camper.first_name} ${e.camper.last_name}</div><div class="rank-det">${e.evalCount} eval${e.evalCount!==1?'s':''} · ${e.clinicians.join(', ')}</div>${tags?`<div class="rank-tags">${tags}</div>`:''}<div class="rank-bars">${bars}</div></div><div class="rank-avg">${e.overall.toFixed(1)}</div></div>`;}).join('');
 }
 
 // ═══ SETTINGS ═══
@@ -3225,7 +3243,6 @@ function buildAndDownloadReport(c){
   const evs = evaluations.filter(e=>e.camper_id===c.id);
   const n = evs.length;
   const avg = n ? (evs.map(e=>e.overall_score||0).reduce((a,b)=>a+b,0)/n).toFixed(1) : 'N/A';
-  const rmac = evs.filter(e=>e.scores&&e.scores.rmac_ready===true).length >= Math.max(1,n/2);
   const conf = evs.filter(e=>e.scores&&e.scores.conference_ready===true).length >= Math.max(1,n/2);
   const top10 = evs.filter(e=>e.scores&&e.scores.top10===true).length >= Math.max(1,n/2);
   const catRows = CFG.CATS.map(cat=>{
@@ -3240,7 +3257,7 @@ function buildAndDownloadReport(c){
     const dt=e.eval_date||(e.created_at?new Date(e.created_at).toLocaleDateString():'—');
     return '<tr><td style="padding:7px 12px;font-size:12px;color:#888880">'+(e.clinician_name||'—')+'</td><td style="padding:7px 12px;font-size:12px;color:#888880">'+dt+'</td><td style="padding:7px 12px;font-size:12px;color:#888880">Court '+(e.court||'—')+'</td><td style="padding:7px 12px;font-size:14px;font-weight:700;color:#C4C4C4">'+(e.overall_score||0).toFixed(1)+'</td></tr>';
   }).join('');
-  const badges=[rmac?'<span style="background:rgba(46,204,113,.15);border:1px solid #2ecc71;color:#2ecc71;padding:4px 12px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:.1em">RMAC READY</span>':'',conf?'<span style="background:rgba(52,152,219,.15);border:1px solid #3498db;color:#3498db;padding:4px 12px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:.1em">CONFERENCE READY</span>':'',top10?'<span style="background:rgba(196,196,196,.15);border:1px solid #C4C4C4;color:#C4C4C4;padding:4px 12px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:.1em">TOP 10</span>':''].filter(Boolean).join(' ');
+  const badges=[conf?'<span style="background:rgba(52,152,219,.15);border:1px solid #3498db;color:#3498db;padding:4px 12px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:.1em">CONFERENCE READY</span>':'',top10?'<span style="background:rgba(196,196,196,.15);border:1px solid #C4C4C4;color:#C4C4C4;padding:4px 12px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:.1em">TOP 10</span>':''].filter(Boolean).join(' ');
   const rHTML='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>EBO Report — '+c.first_name+' '+c.last_name+'</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;background:#0a0a0a;color:#e8e8e0;-webkit-print-color-adjust:exact;print-color-adjust:exact}</style></head><body><div style="max-width:680px;margin:0 auto"><div style="background:#C4C4C4;padding:20px 24px;display:flex;align-items:center;justify-content:space-between"><div><div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:rgba(0,0,0,.6);text-transform:uppercase">Elevate Basketball Officiating Camp</div><div style="font-size:22px;font-weight:900;color:#000;letter-spacing:.06em;margin-top:2px">PERFORMANCE REPORT</div><div style="font-size:11px;color:rgba(0,0,0,.5);margin-top:2px">Lakewood, CO · April 30 – May 3, 2026</div></div><div style="text-align:right"><div style="font-size:11px;color:rgba(0,0,0,.6)">Generated</div><div style="font-size:12px;font-weight:700;color:#000">'+new Date().toLocaleDateString()+'</div></div></div><div style="background:#111;padding:20px 24px;border-bottom:1px solid #222"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px"><div><div style="font-size:28px;font-weight:900;color:#fff;letter-spacing:.04em">'+c.first_name+' '+c.last_name+'</div><div style="font-size:13px;color:#888;margin-top:3px">'+(c.city||'')+(c.state?', '+c.state:'')+' · '+(c.type||'Non-Staff')+'</div></div><div style="text-align:center;background:#1a1a1a;border:1px solid #333;border-radius:8px;padding:14px 20px"><div style="font-size:48px;font-weight:900;color:#C4C4C4;line-height:1">'+avg+'</div><div style="font-size:11px;color:#888;letter-spacing:.1em;text-transform:uppercase;margin-top:4px">Overall Avg · '+n+' eval'+(n!==1?'s':'')+'</div></div></div>'+(badges?'<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">'+badges+'</div>':'')+'</div>'+(n>0?'<div style="background:#0d0d0d;padding:16px 24px"><div style="font-size:10px;font-weight:700;letter-spacing:.14em;color:#C4C4C4;text-transform:uppercase;margin-bottom:10px">Category Breakdown</div><table style="width:100%;border-collapse:collapse">'+catRows+'</table></div><div style="background:#111;padding:16px 24px"><div style="font-size:10px;font-weight:700;letter-spacing:.14em;color:#C4C4C4;text-transform:uppercase;margin-bottom:10px">Evaluation History</div><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:6px 12px;font-size:10px;color:#555;text-transform:uppercase">Clinician</th><th style="text-align:left;padding:6px 12px;font-size:10px;color:#555;text-transform:uppercase">Date</th><th style="text-align:left;padding:6px 12px;font-size:10px;color:#555;text-transform:uppercase">Court</th><th style="text-align:left;padding:6px 12px;font-size:10px;color:#555;text-transform:uppercase">Score</th></tr></thead><tbody>'+evalRows+'</tbody></table></div>':'<div style="padding:24px;text-align:center;color:#555">No evaluations recorded</div>')+'<div style="background:#080808;padding:14px 24px;border-top:1px solid #1a1a1a;font-size:10px;color:#444;text-align:center">Elevate Basketball Officiating Camp · Lakewood, CO · April 30 – May 3, 2026</div></div><scr'+'ipt>window.onload=function(){window.print();}</'+'script></body></html>';
   const blob=new Blob([rHTML],{type:'text/html'});
   const url=URL.createObjectURL(blob);
