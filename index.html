@@ -1700,7 +1700,7 @@ function renderAdminClinicians(){
   const tbody=document.getElementById('aclbody');
   if(!clinicians.length){tbody.innerHTML='<tr><td colspan="3"><div class="empty"><span class="ei">🏁</span><div class="et">No Clinicians Yet</div></div></td></tr>';return;}
   tbody.innerHTML='';
-  clinicians.forEach((c,i)=>{const tr=document.createElement('tr');tr.innerHTML=`<td class="tdr">${i+1}</td><td class="tdm"><span style="cursor:pointer;color:var(--or);text-decoration:underline" onclick="viewClinicianRankings('${c.name}')">${c.name}</span></td><td style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn bsec bsm" title="Resend login credentials" onclick="resendClinicianLogin('${c.id}')">Login</button><button class="btn bsec bsm" onclick="openEditClinician('${c.id}')">Edit</button><button class="btn bred bsm" onclick="delClinician('${c.id}')">Del</button></td>`;tbody.appendChild(tr);});
+  clinicians.forEach((c,i)=>{const tr=document.createElement('tr');tr.innerHTML=`<td class="tdr">${i+1}</td><td class="tdm"><span style="cursor:pointer;color:var(--or);text-decoration:underline" onclick="viewClinicianRankings('${c.name}')">${c.name}</span></td><td style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn bsec bsm" title="Email login info to this clinician" onclick="resendClinicianLogin('${c.id}')">Email</button><button class="btn bsec bsm" onclick="openEditClinician('${c.id}')">Edit</button><button class="btn bred bsm" onclick="delClinician('${c.id}')">Del</button></td>`;tbody.appendChild(tr);});
 }
 let _editClinicianId=null;
 let _editStaffId=null;
