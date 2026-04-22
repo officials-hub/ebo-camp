@@ -382,6 +382,13 @@ td{padding:9px 12px;border-bottom:1px solid var(--b1);vertical-align:middle;colo
 #chatNotif-label{font-size:11px;font-weight:700;color:#C4C4C4;letter-spacing:.08em;text-transform:uppercase}
 #chatNotif-msg{font-size:13px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #chatNotif-hint{font-size:11px;color:#888;flex-shrink:0}
+#filmNotif{position:fixed;top:0;left:0;right:0;z-index:9999;background:#1a1a1a;border-bottom:2px solid var(--or);padding:10px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;transform:translateY(-100%);transition:transform 0.3s ease;pointer-events:none}
+#filmNotif.show{transform:translateY(0);pointer-events:all}
+#filmNotif-icon{width:32px;height:32px;border-radius:50%;background:var(--or);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px}
+#filmNotif-body{flex:1;min-width:0}
+#filmNotif-label{font-size:11px;font-weight:700;color:var(--or);letter-spacing:.08em;text-transform:uppercase}
+#filmNotif-msg{font-size:13px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#filmNotif-hint{font-size:11px;color:#888;flex-shrink:0}
 .bb{position:relative}
 
 /* ═══ SCHEDULE ═══ */
@@ -432,6 +439,7 @@ if('serviceWorker' in navigator){
 <body>
 <div id="toast"></div>
 <div id="chatNotif" onclick="chatNotifTap()"><div id="chatNotif-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div id="chatNotif-body"><div id="chatNotif-label">New message</div><div id="chatNotif-msg"></div></div><div id="chatNotif-hint">tap to view</div></div>
+<div id="filmNotif" onclick="filmNotifTap()"><div id="filmNotif-icon">🎥</div><div id="filmNotif-body"><div id="filmNotif-label">New game film</div><div id="filmNotif-msg">Tap to view your profile</div></div><div id="filmNotif-hint">tap to view</div></div>
 <div id="cfdlg"><div id="cfdlgbox"><div id="cfdlgtxt"></div><div id="cfdlgbtns"><button class="btn bsec" id="cfdlgno" type="button">Cancel</button><button class="btn bor" id="cfdlgyes" type="button">OK</button></div></div></div>
 
 <!-- LOGIN -->
@@ -768,6 +776,10 @@ if('serviceWorker' in navigator){
       <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
       Email Blast
     </button>
+    <button class="admin-more-item" id="atab-gamefilm" onclick="aTabMore('gamefilm')" type="button">
+      <svg viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+      Game Film
+    </button>
     <button class="admin-more-item" id="atab-settings" onclick="aTabMore('settings')" type="button">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       Settings
@@ -1043,6 +1055,30 @@ if('serviceWorker' in navigator){
 </div>
 </div>
 
+<div class="tc" id="at-gamefilm">
+<div class="stitle" style="margin-bottom:14px">POST <span>GAME FILM</span></div>
+
+<div style="margin-bottom:12px">
+  <label class="flabel">YouTube URL</label>
+  <input class="finput" id="gfUrl" type="url" placeholder="https://www.youtube.com/watch?v=..." style="margin-bottom:0">
+</div>
+
+<div style="margin-bottom:14px">
+  <label class="flabel">Tag Campers</label>
+  <div class="swrap" style="width:100%;margin-bottom:8px"><span class="sicon">🔍</span><input class="sinput" style="width:100%" type="text" id="gfCamperSearch" placeholder="Search campers..." oninput="renderGfCamperList(this.value)"></div>
+  <div id="gfCamperList" style="max-height:260px;overflow-y:auto;background:var(--gray2);border:1px solid var(--b2);border-radius:var(--rs);padding:6px"></div>
+  <div id="gfSelectedCount" style="font-size:11px;color:var(--tx3);margin-top:6px">0 selected</div>
+</div>
+
+<button class="btn bor" style="width:100%;padding:14px;font-family:'Oswald',sans-serif;font-size:18px;letter-spacing:.08em" id="gfPostBtn" onclick="postGameFilm()">POST FILM</button>
+<div id="gfStatus" style="margin-top:10px;font-size:12px;color:var(--tx2);text-align:center"></div>
+
+<div style="margin-top:24px">
+  <div class="flabel" style="margin-bottom:8px">Recent Films</div>
+  <div id="gfRecentList" style="display:flex;flex-direction:column;gap:8px"></div>
+</div>
+</div>
+
 <div class="tc" id="at-settings">
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
 <div>
@@ -1165,6 +1201,9 @@ const CFG={
 
 // ═══ STATE ═══
 let campers=[],evaluations=[],clinicians=[],staffList=[],settings={};
+let gameFilms=[],gameFilmCampers=[];
+let gfSelectedCampers=new Set();
+let _oembedCache={};
 let CU=null,CR=null; // current user, current role
 let ynState={top10:null};
 let ynStateAe={top10:null};
@@ -1188,13 +1227,16 @@ async function supa(table,method,body,query){
 async function loadAll(){
   await loadSchedule();
   try{
-    [campers,evaluations,clinicians,staffList]=await Promise.all([
+    [campers,evaluations,clinicians,staffList,gameFilms,gameFilmCampers]=await Promise.all([
       supa('campers','GET',null,'?order=last_name.asc'),
       supa('evaluations','GET',null,'?order=created_at.desc'),
       supa('clinicians','GET',null,'?order=name.asc'),
-      supa('staff','GET',null,'?order=last_name.asc')
+      supa('staff','GET',null,'?order=last_name.asc'),
+      supa('game_films','GET',null,'?order=posted_at.desc').catch(()=>[]),
+      supa('game_film_campers','GET',null,'').catch(()=>[])
     ]);
     campers=campers||[];evaluations=evaluations||[];clinicians=clinicians||[];staffList=staffList||[];
+    gameFilms=gameFilms||[];gameFilmCampers=gameFilmCampers||[];
     await loadCampDocs();
     await loadCampDocs();
     const sets=await supa('settings','GET',null,'');
@@ -1251,6 +1293,7 @@ async function loginCamper(){
   const c=campers.find(x=>x.last_name.toLowerCase()===last&&x.pin===pin);
   if(!c){showLoginErr('lcErr','Invalid credentials.');return;}
   CU=c;CR='camper';enterApp();
+  checkFilmNotifOnLogin();
 }
 async function loginStaff(){
   const user=document.getElementById('lsUser').value.trim().toLowerCase();
@@ -1275,6 +1318,7 @@ function logout(){
   document.getElementById('app').style.display='none';
   document.querySelectorAll('.portal').forEach(p=>p.classList.remove('on'));
   document.querySelectorAll('.bnav').forEach(n=>n.classList.remove('on'));
+  stopFilmBackgroundPoll();
   CU=null;CR=null;
   document.querySelectorAll('.fi').forEach(i=>i.value='');
   document.querySelectorAll('.lerr').forEach(e=>e.style.display='none');
@@ -1292,6 +1336,7 @@ function enterApp(){
   else if(CR==='staff'){document.getElementById('pStaff').classList.add('on');document.getElementById('navS').classList.add('on');populateStaffEvalForm();sView('evaluate');}
   else{document.getElementById('pAdmin').classList.add('on');populateAdminForms();aTab('overview',document.querySelector('.atab'));}
   startChatBackgroundPoll();
+  if(CR==='camper')startFilmBackgroundPoll();
 }
 
 // ═══ CAMPER PORTAL ═══
@@ -1567,6 +1612,7 @@ function _aTabActions(name){
   if(name==='profiles')renderProfiles('');
   if(name==='chat'){markChatRead();renderChat('Admin');}
   if(name==='campinfo'){renderCampInfoDocs();}
+  if(name==='gamefilm'){renderGameFilmPanel();}
 }
 function updateAdminStats(){
   document.getElementById('asc').textContent=campers.length;
@@ -2713,6 +2759,7 @@ function openCamperProfile(id,evalContext){
   if(c.bio)body+=`<div class="pmod-bio">${c.bio}</div>`;
   else body+='<div style="font-size:13px;color:var(--tx3);padding:10px 0">No bio yet.</div>';
   body+=`</div>`;
+  body+=`<div style="padding:0 16px 16px"><div class="pmod-sec" style="font-family:'Oswald',sans-serif;font-size:13px;color:var(--or);letter-spacing:.08em;margin-bottom:8px">🎥 GAME FILM</div><div id="pmFilmList"></div></div>`;
   // If opened from clinician schedule, show Evaluate button with pre-filled context
   if(evalContext){
     const [court,timeSlot,day]=evalContext.split('|');
@@ -2724,7 +2771,239 @@ function openCamperProfile(id,evalContext){
   }
   body+=`<div style="padding:0 16px 40px"><button class="btn bsec" style="width:100%" onclick="closeModal('mProfile')">Close</button></div>`;
   document.getElementById('pmBody').innerHTML=body;
+  renderProfileGameFilm(id);
   openModal('mProfile');
+}
+
+// ═══ GAME FILM ═══
+function ytId(url){
+  if(!url)return null;
+  const m=url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/|live\/))([a-zA-Z0-9_-]{11})/);
+  return m?m[1]:null;
+}
+function ytThumb(id){return`https://img.youtube.com/vi/${id}/hqdefault.jpg`;}
+async function ytTitle(url){
+  if(_oembedCache[url])return _oembedCache[url];
+  try{
+    const r=await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
+    if(!r.ok)return null;
+    const j=await r.json();
+    _oembedCache[url]=j.title||null;
+    return _oembedCache[url];
+  }catch(e){return null;}
+}
+function camperFilms(camperId){
+  const ids=gameFilmCampers.filter(t=>t.camper_id==camperId).map(t=>t.film_id);
+  return gameFilms.filter(f=>ids.includes(f.id)).sort((a,b)=>new Date(b.posted_at)-new Date(a.posted_at));
+}
+
+async function renderProfileGameFilm(camperId){
+  const con=document.getElementById('pmFilmList');
+  if(!con)return;
+  const films=camperFilms(camperId);
+  if(!films.length){con.innerHTML='<div style="font-size:13px;color:var(--tx3);padding:4px 0">No game film posted yet.</div>';return;}
+  con.innerHTML=films.map(f=>{
+    const id=ytId(f.youtube_url);
+    const thumb=id?ytThumb(id):'';
+    const date=new Date(f.posted_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    return`<a href="${f.youtube_url}" target="_blank" rel="noopener" style="display:flex;gap:10px;background:var(--gray2);border:1px solid var(--b2);border-radius:var(--rs);padding:8px;margin-bottom:8px;text-decoration:none;color:inherit">
+      ${thumb?`<img src="${thumb}" style="width:96px;height:54px;object-fit:cover;border-radius:4px;flex-shrink:0">`:'<div style="width:96px;height:54px;background:#000;border-radius:4px;flex-shrink:0"></div>'}
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center">
+        <div class="pmFilm-title" data-url="${f.youtube_url}" style="font-size:13px;color:var(--tx);font-weight:600;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">Loading title...</div>
+        <div style="font-size:11px;color:var(--tx3);margin-top:4px">${date} · Watch on YouTube ↗</div>
+      </div>
+    </a>`;
+  }).join('');
+  // Fetch titles async and fill in
+  con.querySelectorAll('.pmFilm-title').forEach(async el=>{
+    const t=await ytTitle(el.dataset.url);
+    if(t)el.textContent=t;
+    else el.textContent=el.dataset.url;
+  });
+}
+
+function renderGameFilmPanel(){
+  document.getElementById('gfUrl').value='';
+  gfSelectedCampers=new Set();
+  document.getElementById('gfCamperSearch').value='';
+  renderGfCamperList('');
+  renderGfRecent();
+  document.getElementById('gfStatus').textContent='';
+}
+function renderGfCamperList(q){
+  q=(q||'').toLowerCase();
+  const con=document.getElementById('gfCamperList');
+  const list=[...campers].sort((a,b)=>(a.last_name+a.first_name).toLowerCase().localeCompare((b.last_name+b.first_name).toLowerCase()))
+    .filter(c=>!q||(c.first_name+' '+c.last_name).toLowerCase().includes(q));
+  if(!list.length){con.innerHTML='<div style="padding:14px;text-align:center;color:var(--tx3);font-size:12px">No campers found</div>';return;}
+  con.innerHTML=list.map(c=>{
+    const on=gfSelectedCampers.has(c.id);
+    return`<label style="display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:4px;cursor:pointer;${on?'background:var(--ord)':''}">
+      <input type="checkbox" ${on?'checked':''} onchange="toggleGfCamper('${c.id}',this.checked,this)" style="accent-color:var(--or);width:16px;height:16px">
+      <span style="font-size:13px;color:var(--tx)">${c.last_name}, ${c.first_name}</span>
+    </label>`;
+  }).join('');
+}
+function toggleGfCamper(id,on,cb){
+  if(on)gfSelectedCampers.add(id);else gfSelectedCampers.delete(id);
+  document.getElementById('gfSelectedCount').textContent=`${gfSelectedCampers.size} selected`;
+  const label=cb&&cb.closest?cb.closest('label'):null;
+  if(label)label.style.background=on?'var(--ord)':'';
+}
+function renderGfRecent(){
+  const con=document.getElementById('gfRecentList');
+  if(!gameFilms.length){con.innerHTML='<div style="font-size:12px;color:var(--tx3);padding:6px 0">No films posted yet.</div>';return;}
+  con.innerHTML=gameFilms.slice(0,15).map(f=>{
+    const tagged=gameFilmCampers.filter(t=>t.film_id===f.id).map(t=>{
+      const c=campers.find(x=>x.id==t.camper_id);
+      return c?`${c.first_name} ${c.last_name}`:null;
+    }).filter(Boolean);
+    const date=new Date(f.posted_at).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    const id=ytId(f.youtube_url);
+    return`<div style="display:flex;gap:10px;align-items:center;background:var(--gray2);border:1px solid var(--b2);border-radius:var(--rs);padding:8px">
+      ${id?`<img src="${ytThumb(id)}" style="width:64px;height:36px;object-fit:cover;border-radius:3px;flex-shrink:0">`:''}
+      <div style="flex:1;min-width:0">
+        <a href="${f.youtube_url}" target="_blank" rel="noopener" style="font-size:12px;color:var(--tx);text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.youtube_url}</a>
+        <div style="font-size:10px;color:var(--tx3);margin-top:2px">${date} · ${tagged.length} tagged${tagged.length?': '+tagged.slice(0,3).join(', ')+(tagged.length>3?` +${tagged.length-3}`:''):''}</div>
+      </div>
+      <button class="btn bred bsm" onclick="deleteGameFilm('${f.id}')">Del</button>
+    </div>`;
+  }).join('');
+}
+
+async function postGameFilm(){
+  const urlInput=document.getElementById('gfUrl');
+  const st=document.getElementById('gfStatus');
+  const btn=document.getElementById('gfPostBtn');
+  const url=urlInput.value.trim();
+  if(!url){st.innerHTML='<span style="color:#f66">Enter a YouTube URL</span>';return;}
+  if(!ytId(url)){st.innerHTML='<span style="color:#f66">That doesn’t look like a YouTube URL</span>';return;}
+  if(!gfSelectedCampers.size){st.innerHTML='<span style="color:#f66">Tag at least one camper</span>';return;}
+  btn.disabled=true;btn.textContent='POSTING...';
+  st.innerHTML='<span style="color:var(--tx2)">Saving...</span>';
+  try{
+    const created=await supa('game_films','POST',{youtube_url:url});
+    const filmId=Array.isArray(created)?created[0].id:created.id;
+    const tagRows=[...gfSelectedCampers].map(cid=>({film_id:filmId,camper_id:cid}));
+    await supa('game_film_campers','POST',tagRows);
+    await loadAll();
+    st.innerHTML='<span style="color:#4ade80">✓ Posted</span>';
+    toast('Game film posted!');
+    // Send emails async — don't block UI
+    sendGameFilmEmails(url,[...gfSelectedCampers]).catch(e=>console.warn('Email send error',e));
+    renderGameFilmPanel();
+  }catch(e){
+    console.error(e);
+    st.innerHTML=`<span style="color:#f66">✕ ${e.message||'Save failed'}</span>`;
+  }
+  btn.disabled=false;btn.textContent='POST FILM';
+}
+
+async function deleteGameFilm(id){
+  const ok=await cf('Delete this film? This cannot be undone.','Delete','Cancel');
+  if(!ok)return;
+  try{
+    await supa('game_films','DELETE',null,`?id=eq.${id}`);
+    await loadAll();
+    renderGfRecent();
+    toast('Film deleted');
+  }catch(e){toast('Delete failed',true);}
+}
+
+function buildGameFilmEmailHTML(camper,url,title){
+  const id=ytId(url);
+  const thumb=id?ytThumb(id):'';
+  const safeTitle=title||'New game film';
+  return`<div style="max-width:420px;margin:0 auto;font-family:Arial,sans-serif;background:#111;border-radius:8px;overflow:hidden;">
+    <div style="background:#C4C4C4;padding:12px 16px;">
+      <div style="color:#fff;font-size:14px;font-weight:700;letter-spacing:1px;">${CFG.CAMP_NAME}</div>
+      <div style="color:rgba(255,255,255,.8);font-size:11px;margin-top:2px;">NEW GAME FILM POSTED</div>
+    </div>
+    <div style="padding:16px;">
+      <div style="color:#C4C4C4;font-size:16px;font-weight:700;margin-bottom:2px;">${camper.first_name} ${camper.last_name}</div>
+      <div style="color:#999;font-size:11px;margin-bottom:14px;">A new film has been posted that includes you.</div>
+      ${thumb?`<a href="${url}" style="display:block;margin-bottom:14px;text-decoration:none"><img src="${thumb}" alt="" style="width:100%;border-radius:6px;display:block"></a>`:''}
+      <div style="background:#1A1A1A;border-radius:6px;padding:12px;margin-bottom:14px;border-left:3px solid #C4C4C4;">
+        <div style="color:#fff;font-size:13px;line-height:1.4;">${safeTitle}</div>
+      </div>
+      <a href="${url}" style="display:block;background:#C4C4C4;color:#000;text-align:center;padding:12px;border-radius:6px;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:.06em;margin-bottom:14px;">▶ WATCH ON YOUTUBE</a>
+      <p style="color:#555;font-size:11px;text-align:center;margin:0;">${CFG.CAMP_NAME} · April 30 – May 3, 2026</p>
+    </div>
+  </div>`;
+}
+
+async function sendGameFilmEmails(url,camperIds){
+  const title=await ytTitle(url);
+  const recipients=camperIds.map(id=>campers.find(c=>c.id==id)).filter(c=>c&&c.email);
+  for(const c of recipients){
+    try{
+      await fetch(CFG.EMAIL_FN_URL,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          to:c.email,
+          from:CFG.FROM_EMAIL,
+          subject:`🎥 ${CFG.CAMP_NAME} — New Game Film`,
+          html:buildGameFilmEmailHTML(c,url,title)
+        })
+      });
+    }catch(e){console.warn('Film email failed for',c.email,e);}
+    await new Promise(r=>setTimeout(r,200));
+  }
+}
+
+let _filmPollTimer=null;
+let _lastFilmNotifId=null;
+
+function showFilmNotif(count){
+  const el=document.getElementById('filmNotif');
+  const msg=document.getElementById('filmNotif-msg');
+  if(msg)msg.textContent=count===1?'Tap to view your profile':`${count} new films · tap to view`;
+  if(el)el.classList.add('show');
+  clearTimeout(window._filmNotifTimer);
+  window._filmNotifTimer=setTimeout(()=>{if(el)el.classList.remove('show');},8000);
+}
+
+function checkFilmNotifOnLogin(){
+  if(CR!=='camper'||!CU?.id)return;
+  const lastSeen=parseInt(localStorage.getItem('filmLastSeen_'+CU.id)||'0');
+  const mine=camperFilms(CU.id);
+  // Seed _lastFilmNotifId so the background poll doesn't re-notify for films already present at login
+  _lastFilmNotifId=mine.length?mine[0].id:null;
+  const newCount=mine.filter(f=>new Date(f.posted_at).getTime()>lastSeen).length;
+  if(newCount>0)showFilmNotif(newCount);
+}
+
+function startFilmBackgroundPoll(){
+  if(_filmPollTimer)return;
+  if(CR!=='camper'||!CU?.id)return;
+  _filmPollTimer=setInterval(async()=>{
+    try{
+      const [films,tags]=await Promise.all([
+        supa('game_films','GET',null,'?order=posted_at.desc'),
+        supa('game_film_campers','GET',null,'')
+      ]);
+      gameFilms=films||[];
+      gameFilmCampers=tags||[];
+      const mine=camperFilms(CU.id);
+      if(mine.length&&mine[0].id!==_lastFilmNotifId){
+        _lastFilmNotifId=mine[0].id;
+        showFilmNotif(1);
+      }
+    }catch(e){console.warn('Film poll error',e);}
+  },30000);
+}
+
+function stopFilmBackgroundPoll(){
+  if(_filmPollTimer){clearInterval(_filmPollTimer);_filmPollTimer=null;}
+}
+function filmNotifTap(){
+  const el=document.getElementById('filmNotif');
+  if(el)el.classList.remove('show');
+  if(CR==='camper'&&CU?.id){
+    localStorage.setItem('filmLastSeen_'+CU.id,String(Date.now()));
+    openCamperProfile(CU.id);
+  }
 }
 
 // ═══ PWA INSTALL PROMPT ═══
