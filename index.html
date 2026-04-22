@@ -2915,18 +2915,18 @@ function buildGameFilmEmailHTML(camper,url,title){
   const thumb=id?ytThumb(id):'';
   const safeTitle=title||'New game film';
   return`<div style="max-width:420px;margin:0 auto;font-family:Arial,sans-serif;background:#111;border-radius:8px;overflow:hidden;">
-    <div style="background:#C4C4C4;padding:12px 16px;">
-      <div style="color:#fff;font-size:14px;font-weight:700;letter-spacing:1px;">${CFG.CAMP_NAME}</div>
-      <div style="color:rgba(255,255,255,.8);font-size:11px;margin-top:2px;">NEW GAME FILM POSTED</div>
+    <div style="background:#000000;padding:18px 22px;">
+      <div style="color:#ffffff;font-size:15px;font-weight:800;letter-spacing:1.2px;">${CFG.CAMP_NAME}</div>
+      <div style="color:#ffffff;font-size:11px;font-weight:700;letter-spacing:1.5px;margin-top:4px;">🎥 NEW GAME FILM POSTED</div>
     </div>
-    <div style="padding:16px;">
-      <div style="color:#C4C4C4;font-size:16px;font-weight:700;margin-bottom:2px;">${camper.first_name} ${camper.last_name}</div>
-      <div style="color:#999;font-size:11px;margin-bottom:14px;">A new film has been posted that includes you.</div>
+    <div style="padding:18px;">
+      <div style="color:#ffffff;font-size:17px;font-weight:700;margin-bottom:3px;">${camper.first_name} ${camper.last_name}</div>
+      <div style="color:#999;font-size:12px;margin-bottom:16px;">A new film has been posted that includes you.</div>
       ${thumb?`<a href="${url}" style="display:block;margin-bottom:14px;text-decoration:none"><img src="${thumb}" alt="" style="width:100%;border-radius:6px;display:block"></a>`:''}
-      <div style="background:#1A1A1A;border-radius:6px;padding:12px;margin-bottom:14px;border-left:3px solid #C4C4C4;">
+      <div style="background:#1A1A1A;border-radius:6px;padding:12px;margin-bottom:16px;border-left:3px solid #ffffff;">
         <div style="color:#fff;font-size:13px;line-height:1.4;">${safeTitle}</div>
       </div>
-      <a href="${url}" style="display:block;background:#C4C4C4;color:#000;text-align:center;padding:12px;border-radius:6px;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:.06em;margin-bottom:14px;">▶ WATCH ON YOUTUBE</a>
+      <a href="${url}" style="display:block;background:#ffffff;color:#000;text-align:center;padding:14px;border-radius:6px;text-decoration:none;font-weight:800;font-size:14px;letter-spacing:.08em;margin-bottom:14px;">▶ WATCH ON YOUTUBE</a>
       <p style="color:#555;font-size:11px;text-align:center;margin:0;">${CFG.CAMP_NAME} · April 30 – May 3, 2026</p>
     </div>
   </div>`;
