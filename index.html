@@ -1384,7 +1384,7 @@ function renderCamperResults(){
 
 // ═══ STAFF PORTAL ═══
 function sView(v){
-  if(v!=='chat')chatActiveSuffix=null;
+  if(v!=='chat'&&v!=='staffchat')chatActiveSuffix=null;
   document.querySelectorAll('#pStaff .view').forEach(el=>el.classList.remove('on'));
   document.querySelectorAll('#navS .bb').forEach(b=>b.classList.remove('on'));
   document.getElementById('sv-'+v).classList.add('on');
@@ -1396,6 +1396,7 @@ function sView(v){
   if(v==='history')renderStaffHistory();
   if(v==='roster')renderStaffRoster('');
   if(v==='chat'){markChatRead();renderChat('Staff');}
+  if(v==='staffchat'){markChatRead();renderChat('StaffRoom');}
   if(v==='campinfo')renderCampInfoViewer('sv');
   if(v==='schedule')renderClinicianSchedule();
   if(v==='myprofile')renderMyProfile('staff');
