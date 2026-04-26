@@ -2402,9 +2402,9 @@ function switchAdminChatRoom(room){
   _adminChatRoom = room;
   const isStaff = room === 'staff';
   document.getElementById('adminChatTab-general').style.background = isStaff ? 'var(--gray2)' : 'var(--or)';
-  document.getElementById('adminChatTab-general').style.color = isStaff ? 'var(--tx2)' : '#000';
+  document.getElementById('adminChatTab-general').style.color = isStaff ? 'var(--tx2)' : '#fff';
   document.getElementById('adminChatTab-staff').style.background = isStaff ? 'var(--or)' : 'var(--gray2)';
-  document.getElementById('adminChatTab-staff').style.color = isStaff ? '#000' : 'var(--tx2)';
+  document.getElementById('adminChatTab-staff').style.color = isStaff ? '#fff' : 'var(--tx2)';
   document.getElementById('adminChatRoomLabel').textContent = isStaff ? '🔒 Staff & clinicians only — campers cannot see this' : 'Visible to everyone — campers, staff, and admin';
   document.getElementById('adminChatSendBtn').style.background = isStaff ? '#e05a00' : 'var(--or)';
   renderChat('Admin');
