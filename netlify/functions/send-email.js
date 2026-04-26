@@ -65,10 +65,10 @@ exports.handler = async (event) => {
   }
 
   // Build the "from" field.
-  // The portal passes from='EBO Camp <onboarding@resend.dev>' (already formatted).
+  // The portal passes from='EBO Camp <noreply@elevatebasketballofficiate.org>' (already formatted).
   // If `fromName` is separately provided, prepend it. If nothing is passed, fall back
-  // to the sandbox sender (works until the EBO domain is verified in Resend).
-  let fromField = from || 'EBO Camp <onboarding@resend.dev>';
+  // to the verified domain sender.
+  let fromField = from || 'EBO Camp <noreply@elevatebasketballofficiate.org>';
   if (fromName && !fromField.includes('<')) {
     fromField = `${fromName} <${fromField}>`;
   }
