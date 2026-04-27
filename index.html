@@ -1792,20 +1792,36 @@ async function sendAllClinicianLogins(){
   if(!ok)return;
   const btn=document.getElementById('sendAllClinicianLoginsBtn');
   btn.disabled=true;btn.textContent='⏳ Sending...';
-  let sent=0,failed=0;
+  let sent=0;
+  const failures=[];
   for(const it of eligible){
+    const label=`${it.first} ${it.last} <${it.email}>`;
     try{
       const res=await fetch(CFG.EMAIL_FN_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
         to:it.email,from:CFG.FROM_EMAIL,
         subject:'EBO Camp — Your Clinician Login',
         html:buildClinicianEmailHTML(it.first,it.last,it.staff.username,it.staff.password)
       })});
-      if(res.ok)sent++;else failed++;
-    }catch(e){failed++;}
+      if(res.ok){sent++;}
+      else{
+        let body='';try{body=await res.text();}catch(_){}
+        failures.push({label,reason:`HTTP ${res.status}`,body});
+        console.error('Clinician login email failed:',label,res.status,body);
+      }
+    }catch(e){
+      failures.push({label,reason:e.message||'fetch error',body:''});
+      console.error('Clinician login email errored:',label,e);
+    }
     await new Promise(r=>setTimeout(r,200));
   }
   btn.disabled=false;btn.textContent='Send All Logins';
-  toast(`✅ ${sent} sent${failed?', '+failed+' failed':''}`);
+  if(failures.length){
+    const summary=failures.map(f=>`• ${f.label} — ${f.reason}`).join('\n');
+    console.warn('Send All Logins failures:\n'+summary);
+    alert(`✅ ${sent} sent, ${failures.length} failed:\n\n${summary}\n\n(See console for full response bodies.)`);
+  }else{
+    toast(`✅ ${sent} sent`);
+  }
 }
 
 async function resendClinicianLogin(id){
