@@ -1339,7 +1339,7 @@ function logout(){
   document.getElementById('loginScreen').style.display='flex';
   document.getElementById('app').style.display='none';
   document.querySelectorAll('.portal').forEach(p=>p.classList.remove('on'));
-  document.querySelectorAll('.bnav').forEach(n=>n.classList.remove('on'));
+  document.querySelectorAll('.bnav').forEach(n=>{n.classList.remove('on');n.style.display='';});
   stopFilmBackgroundPoll();
   CU=null;CR=null;
   document.querySelectorAll('.fi').forEach(i=>i.value='');
@@ -1353,6 +1353,8 @@ function enterApp(){
   badge.textContent=CR.toUpperCase();
   badge.className='nbadge '+(CR==='camper'?'bc':CR==='staff'?'bs':'ba');
   document.getElementById('uName').textContent=CU.first_name+(CU.last_name?' '+CU.last_name:'');
+  // Clear any stale inline display:none left over from a previously-open mProfile
+  document.querySelectorAll('.bnav').forEach(n=>{n.classList.remove('on');n.style.display='';});
   document.querySelectorAll('.portal').forEach(p=>p.classList.remove('on'));
   if(CR==='camper'){document.getElementById('pCamper').classList.add('on');document.getElementById('navC').classList.add('on');cView('home');}
   else if(CR==='staff'){document.getElementById('pStaff').classList.add('on');document.getElementById('navS').classList.add('on');populateStaffEvalForm();sView('evaluate');}
@@ -3243,11 +3245,25 @@ async function saveMyProfile(role){
     } else {
       // Clinician (logged in via staff portal): split fields between staff + clinicians tables.
       // staff has first_name/last_name; clinicians has photo/role/city/state/conference/bio (matched by name).
+      const norm=s=>(s||'').trim().toLowerCase().replace(/\s+/g,' ');
+      const oldNameNorm=norm((CU.first_name||'')+' '+(CU.last_name||''));
+      const newName=first+' '+last;
+      const newNameNorm=norm(newName);
+      // Find matching clinician record by either old or new name, case- and whitespace-insensitive
+      let cl=clinicians.find(c=>norm(c.name)===oldNameNorm)
+          ||clinicians.find(c=>norm(c.name)===newNameNorm);
+      // If no clinician record exists yet for this staff user, create one so profile saves can land
+      if(!cl){
+        try{
+          const created=await supa('clinicians','POST',{name:newName});
+          cl=Array.isArray(created)?created[0]:created;
+          if(cl)clinicians.push(cl);
+        }catch(createErr){
+          console.warn('Could not create clinician record:',createErr);
+        }
+      }
       await supa('staff','PATCH',{first_name:first,last_name:last},`?id=eq.${CU.id}`);
       Object.assign(CU,{first_name:first,last_name:last});
-      const oldName=(CU.first_name||'')+' '+(CU.last_name||'');
-      const newName=first+' '+last;
-      const cl=clinicians.find(c=>c.name===oldName)||clinicians.find(c=>c.name===newName);
       if(cl){
         const clData={name:newName,city,state,conference,bio};
         await supa('clinicians','PATCH',clData,`?id=eq.${cl.id}`);
@@ -3259,6 +3275,8 @@ async function saveMyProfile(role){
           try{ await supa('clinicians','PATCH',{photo},`?id=eq.${cl.id}`); }
           catch(photoErr){ console.warn('Photo save failed:',photoErr); toast('Profile saved but photo failed — try a smaller image',true); }
         }
+      } else {
+        toast('Profile saved (photo/bio not linked — no clinician record)',true);
       }
     }
     CU._pendingPhoto=null;
