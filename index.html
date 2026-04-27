@@ -406,7 +406,7 @@ td{padding:9px 12px;border-bottom:1px solid var(--b1);vertical-align:middle;colo
 .sch-slot-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .sch-slot-title{font-family:'Oswald',sans-serif;font-size:14px;font-weight:600;color:var(--tx)}
 .sch-selects{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
-.sch-selects-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.sch-selects-3{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px}
 .sch-select{width:100%;padding:9px 10px;background:var(--gray2);border:1px solid var(--b3);border-radius:var(--rs);color:var(--tx);font-size:13px;font-family:'Source Sans 3',sans-serif}
 .sch-publish-bar{background:var(--gray);border:1px solid var(--b2);border-radius:var(--r);padding:14px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
 .sch-published-badge{font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;letter-spacing:.06em}
@@ -1201,6 +1201,7 @@ if('serviceWorker' in navigator){
 <label class="flabel" style="margin-top:10px">Camper 1 *</label><select class="finput" id="agCamper1"></select>
 <label class="flabel" style="margin-top:10px">Camper 2</label><select class="finput" id="agCamper2"></select>
 <label class="flabel" style="margin-top:10px">Camper 3</label><select class="finput" id="agCamper3"></select>
+<label class="flabel" style="margin-top:10px">Camper 4</label><select class="finput" id="agCamper4"></select>
 <label class="flabel" style="margin-top:10px">Clinician</label><select class="finput" id="agClinician"></select>
 <div id="agErr" style="display:none;background:#fee;color:#c00;padding:8px;border-radius:6px;font-size:12px;margin-top:10px"></div>
 <div style="display:flex;gap:8px;margin-top:14px"><button class="btn bsec" style="flex:1" onclick="closeModal('mAddGame')" type="button">Cancel</button><button class="btn bor" style="flex:1" onclick="saveAddGame()" id="agSaveBtn" type="button">Save Game</button></div>
@@ -3488,11 +3489,12 @@ function renderDailyView(){
       const c1 = campers.find(x=>x.id===s.camper_1_id);
       const c2 = campers.find(x=>x.id===s.camper_2_id);
       const c3 = campers.find(x=>x.id===s.camper_3_id);
+      const c4 = campers.find(x=>x.id===s.camper_4_id);
       const cl = clinicians.find(x=>x.id===s.clinician_id);
       const clName = cl ? (cl.name||cl.first_name+' '+cl.last_name) : '—';
       const evals1 = c1 ? evaluations.filter(e=>e.camper_id===c1.id).length : 0;
       const evals2 = c2 ? evaluations.filter(e=>e.camper_id===c2.id).length : 0;
-      html += '<div style="background:var(--gray);border:1px solid var(--b2);border-radius:var(--r);padding:10px"><div style="font-family:\'Oswald\',sans-serif;font-size:16px;color:var(--or);margin-bottom:6px">'+s.court+'</div>'+(c1?'<div style="font-size:12px;color:var(--tx);font-weight:600;display:flex;justify-content:space-between">'+c1.first_name+' '+c1.last_name+'<span style="font-size:10px;color:var(--tx3)">'+evals1+' eval'+(evals1!==1?'s':'')+'</span></div>':'')+(c2?'<div style="font-size:12px;color:var(--tx);font-weight:600;display:flex;justify-content:space-between">'+c2.first_name+' '+c2.last_name+'<span style="font-size:10px;color:var(--tx3)">'+evals2+' eval'+(evals2!==1?'s':'')+'</span></div>':'')+(c3?'<div style="font-size:12px;color:var(--tx3)">'+c3.first_name+' '+c3.last_name+'</div>':'')+'<div style="font-size:10px;color:var(--tx3);margin-top:6px;padding-top:6px;border-top:1px solid var(--b2)">Clinician: '+clName+'</div></div>';
+      html += '<div style="background:var(--gray);border:1px solid var(--b2);border-radius:var(--r);padding:10px"><div style="font-family:\'Oswald\',sans-serif;font-size:16px;color:var(--or);margin-bottom:6px">'+s.court+'</div>'+(c1?'<div style="font-size:12px;color:var(--tx);font-weight:600;display:flex;justify-content:space-between">'+c1.first_name+' '+c1.last_name+'<span style="font-size:10px;color:var(--tx3)">'+evals1+' eval'+(evals1!==1?'s':'')+'</span></div>':'')+(c2?'<div style="font-size:12px;color:var(--tx);font-weight:600;display:flex;justify-content:space-between">'+c2.first_name+' '+c2.last_name+'<span style="font-size:10px;color:var(--tx3)">'+evals2+' eval'+(evals2!==1?'s':'')+'</span></div>':'')+(c3?'<div style="font-size:12px;color:var(--tx3)">'+c3.first_name+' '+c3.last_name+'</div>':'')+(c4?'<div style="font-size:12px;color:var(--tx3)">'+c4.first_name+' '+c4.last_name+'</div>':'')+'<div style="font-size:10px;color:var(--tx3);margin-top:6px;padding-top:6px;border-top:1px solid var(--b2)">Clinician: '+clName+'</div></div>';
     });
     html += '</div></div>';
   });
@@ -3637,6 +3639,15 @@ function timeToMinutes(t) {
   return h * 60 + m;
 }
 
+// ── ALL slots for a day = predefined + any custom saved times ──
+function getAllSlotsForDay(dayKey) {
+  const dayInfo = SCHEDULE_DAYS[dayKey];
+  if (!dayInfo) return [];
+  const saved = [...new Set(scheduleData.filter(s => s.day === dayInfo.label).map(s => s.time_slot))];
+  const merged = [...new Set([...dayInfo.slots, ...saved])];
+  return merged.sort((a,b) => timeToMinutes(a) - timeToMinutes(b));
+}
+
 // ── ADMIN: Switch day ────────────────────────────────────
 function adminSchDay(day, btn) {
   currentAdminDay = day;
@@ -3668,8 +3679,9 @@ function renderAdminSchedule() {
     clinOpts += `<option value="${id}">${name}</option>`;
   });
 
+  const allSlots = getAllSlotsForDay(dayKey);
   let html = '';
-  dayInfo.slots.forEach(slot => {
+  allSlots.forEach(slot => {
     COURTS.forEach(court => {
       const existing = scheduleData.find(s => s.day === dayInfo.label && s.time_slot === slot && s.court === court);
       const slotId = `${dayKey}_${slot.replace(/[: ]/g,'')}_${court.replace(' ','')}`;
@@ -3695,6 +3707,11 @@ function renderAdminSchedule() {
             <input type="hidden" id="c3_${slotId}">
             <div class="cdrop" id="c3_${slotId}_drop" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--b3);border-radius:var(--rs);z-index:50;max-height:160px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.12)"></div>
           </div>
+          <div style="position:relative">
+            <input class="sch-select" id="c4i_${slotId}" placeholder="Camper 4..." oninput="filterCamperDrop('c4_${slotId}',this.value)" onfocus="showCamperDrop('c4_${slotId}')" onblur="hideCamperDrop('c4_${slotId}')" autocomplete="off" type="text">
+            <input type="hidden" id="c4_${slotId}">
+            <div class="cdrop" id="c4_${slotId}_drop" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--b3);border-radius:var(--rs);z-index:50;max-height:160px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.12)"></div>
+          </div>
         </div>
         <select class="sch-select" id="cl_${slotId}" style="width:100%">${clinOpts}</select>
         <div id="flag_${slotId}" style="margin-top:6px"></div>
@@ -3705,7 +3722,7 @@ function renderAdminSchedule() {
   container.innerHTML = html;
 
   // Populate existing values
-  dayInfo.slots.forEach(slot => {
+  allSlots.forEach(slot => {
     COURTS.forEach(court => {
       const existing = scheduleData.find(s => s.day === dayInfo.label && s.time_slot === slot && s.court === court);
       if (!existing) return;
@@ -3713,11 +3730,13 @@ function renderAdminSchedule() {
       const s1 = document.getElementById(`c1_${slotId}`);
       const s2 = document.getElementById(`c2_${slotId}`);
       const s3 = document.getElementById(`c3_${slotId}`);
+      const s4 = document.getElementById(`c4_${slotId}`);
       const sc = document.getElementById(`cl_${slotId}`);
       const getName = id => { const c = campers.find(x=>x.id==id); return c ? c.first_name+' '+c.last_name : ''; };
       if (s1 && existing.camper_1_id) { s1.value = existing.camper_1_id; const ti=document.getElementById('c1i_'+slotId); if(ti) ti.value=getName(existing.camper_1_id); }
       if (s2 && existing.camper_2_id) { s2.value = existing.camper_2_id; const ti=document.getElementById('c2i_'+slotId); if(ti) ti.value=getName(existing.camper_2_id); }
       if (s3 && existing.camper_3_id) { s3.value = existing.camper_3_id; const ti=document.getElementById('c3i_'+slotId); if(ti) ti.value=getName(existing.camper_3_id); }
+      if (s4 && existing.camper_4_id) { s4.value = existing.camper_4_id; const ti=document.getElementById('c4i_'+slotId); if(ti) ti.value=getName(existing.camper_4_id); }
       if (sc && existing.clinician_id) sc.value = existing.clinician_id;
     });
   });
@@ -3740,6 +3759,7 @@ function openAddGameModal() {
   document.getElementById('agCamper1').innerHTML = '<option value="">— Select —</option>' + camperOpts;
   document.getElementById('agCamper2').innerHTML = '<option value="">— None —</option>' + camperOpts;
   document.getElementById('agCamper3').innerHTML = '<option value="">— None —</option>' + camperOpts;
+  document.getElementById('agCamper4').innerHTML = '<option value="">— None —</option>' + camperOpts;
 
   const clinSorted = [...clinicians].sort((a,b)=>(a.name||'').localeCompare(b.name||''));
   document.getElementById('agClinician').innerHTML = '<option value="">— None —</option>' + clinSorted.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
@@ -3755,6 +3775,7 @@ async function saveAddGame() {
   const c1 = document.getElementById('agCamper1').value || null;
   const c2 = document.getElementById('agCamper2').value || null;
   const c3 = document.getElementById('agCamper3').value || null;
+  const c4 = document.getElementById('agCamper4').value || null;
   const cl = document.getElementById('agClinician').value || null;
   const err = document.getElementById('agErr');
   err.style.display = 'none';
@@ -3764,7 +3785,7 @@ async function saveAddGame() {
   btn.disabled = true; btn.textContent = 'Saving...';
   try {
     const existing = scheduleData.find(s => s.day === day && s.time_slot === slot && s.court === court);
-    const payload = { day, time_slot: slot, court, camper_1_id: c1, camper_2_id: c2, camper_3_id: c3, clinician_id: cl };
+    const payload = { day, time_slot: slot, court, camper_1_id: c1, camper_2_id: c2, camper_3_id: c3, camper_4_id: c4, clinician_id: cl };
     if (existing) {
       await supa('schedule','PATCH',payload,`?id=eq.${existing.id}`);
       toast('Game updated');
@@ -3790,11 +3811,12 @@ async function saveSlot(dayKey, slot, court) {
   const c1 = document.getElementById(`c1_${slotId}`)?.value || null;
   const c2 = document.getElementById(`c2_${slotId}`)?.value || null;
   const c3 = document.getElementById(`c3_${slotId}`)?.value || null;
+  const c4 = document.getElementById(`c4_${slotId}`)?.value || null;
   const cl = document.getElementById(`cl_${slotId}`)?.value || null;
-  if (!c1 && !c2 && !c3) { toast('Select at least one camper', true); return; }
+  if (!c1 && !c2 && !c3 && !c4) { toast('Select at least one camper', true); return; }
 
   // Validate before save
-  const flags = validateSlot(dayInfo.label, slot, court, c1, c2, c3, cl, null);
+  const flags = validateSlot(dayInfo.label, slot, court, c1, c2, c3, c4, cl, null);
   const flagBox = document.getElementById(`flag_${slotId}`);
   if (flagBox) {
     flagBox.innerHTML = flags.map(f =>
@@ -3809,6 +3831,7 @@ async function saveSlot(dayKey, slot, court) {
     camper_1_id: c1 || null,
     camper_2_id: c2 || null,
     camper_3_id: c3 || null,
+    camper_4_id: c4 || null,
     clinician_id: cl && !cl.startsWith('ph_') ? cl : null
   };
 
@@ -3829,9 +3852,9 @@ async function saveSlot(dayKey, slot, court) {
 }
 
 // ── VALIDATE A SLOT ─────────────────────────────────────
-function validateSlot(day, slot, court, c1, c2, c3, cl, excludeId) {
+function validateSlot(day, slot, court, c1, c2, c3, c4, cl, excludeId) {
   const flags = [];
-  const camperIds = [c1, c2, c3].filter(Boolean);
+  const camperIds = [c1, c2, c3, c4].filter(Boolean);
   const slotMinutes = timeToMinutes(slot);
 
   // Get all slots for this day (excluding current)
@@ -3843,7 +3866,7 @@ function validateSlot(day, slot, court, c1, c2, c3, cl, excludeId) {
 
     // Count games today
     const todayGames = daySlots.filter(s =>
-      s.camper_1_id === cid || s.camper_2_id === cid || s.camper_3_id === cid
+      s.camper_1_id === cid || s.camper_2_id === cid || s.camper_3_id === cid || s.camper_4_id === cid
     );
 
     if (todayGames.length >= 3) {
@@ -3864,7 +3887,7 @@ function validateSlot(day, slot, court, c1, c2, c3, cl, excludeId) {
     const clinGames = daySlots.filter(s => s.clinician_id === cl);
     camperIds.forEach(cid => {
       const seenCount = clinGames.filter(s =>
-        s.camper_1_id === cid || s.camper_2_id === cid || s.camper_3_id === cid
+        s.camper_1_id === cid || s.camper_2_id === cid || s.camper_3_id === cid || s.camper_4_id === cid
       ).length;
       if (seenCount >= 2) {
         const camper = campers.find(c => c.id === cid);
@@ -3895,13 +3918,14 @@ function updateAllFlags() {
   const dayInfo = SCHEDULE_DAYS[dayKey];
   let totalErrors = 0, totalWarns = 0;
 
-  dayInfo.slots.forEach(slot => {
+  const allSlots = getAllSlotsForDay(dayKey);
+  allSlots.forEach(slot => {
     COURTS.forEach(court => {
       const slotId = `${dayKey}_${slot.replace(/[: ]/g,'')}_${court.replace(' ','')}`;
       const existing = scheduleData.find(s => s.day === dayInfo.label && s.time_slot === slot && s.court === court);
       if (!existing) return;
       const flags = validateSlot(dayInfo.label, slot, court,
-        existing.camper_1_id, existing.camper_2_id, existing.camper_3_id,
+        existing.camper_1_id, existing.camper_2_id, existing.camper_3_id, existing.camper_4_id,
         existing.clinician_id, existing.id);
       const flagBox = document.getElementById(`flag_${slotId}`);
       if (flagBox) {
@@ -3965,7 +3989,7 @@ function renderCamperSchedule() {
   }
 
   const mySlots = scheduleData.filter(s =>
-    s.camper_1_id === CU.id || s.camper_2_id === CU.id || s.camper_3_id === CU.id
+    s.camper_1_id === CU.id || s.camper_2_id === CU.id || s.camper_3_id === CU.id || s.camper_4_id === CU.id
   ).sort((a,b) => {
     const dayOrder = ['Friday May 1, 2026','Saturday May 2, 2026','Sunday May 3, 2026'];
     const d = dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day);
@@ -3988,7 +4012,7 @@ function renderCamperSchedule() {
     }
 
     // Get partner names
-    const allIds = [s.camper_1_id, s.camper_2_id, s.camper_3_id].filter(Boolean);
+    const allIds = [s.camper_1_id, s.camper_2_id, s.camper_3_id, s.camper_4_id].filter(Boolean);
     const partners = allIds.filter(id => id !== CU.id).map(id => {
       const c = campers.find(x => x.id === id);
       return c ? c.first_name + ' ' + c.last_name : '';
@@ -4054,7 +4078,7 @@ function renderClinicianSchedule() {
       lastDay = s.day;
     }
 
-    const camperIds = [s.camper_1_id, s.camper_2_id, s.camper_3_id].filter(Boolean);
+    const camperIds = [s.camper_1_id, s.camper_2_id, s.camper_3_id, s.camper_4_id].filter(Boolean);
     const camperNames = camperIds.map(id => {
       const c = campers.find(x => x.id === id);
       return c ? c.first_name + ' ' + c.last_name : '';
@@ -4363,7 +4387,7 @@ function validateGeneratedSchedule(slots, campersAll) {
 
     // Check each camper's games per day
     campersAll.forEach(c => {
-      const games = daySlots.filter(s=>s.camper_1_id===c.id||s.camper_2_id===c.id||s.camper_3_id===c.id);
+      const games = daySlots.filter(s=>s.camper_1_id===c.id||s.camper_2_id===c.id||s.camper_3_id===c.id||s.camper_4_id===c.id);
       const name = c.first_name+' '+c.last_name;
       if (games.length < 2) warnings.push({type:'warn', msg:`${name} has only ${games.length} game(s) on ${day}`});
       if (games.length > 5) warnings.push({type:'warn', msg:`${name} has ${games.length} games on ${day} (heavy load)`});
@@ -4410,9 +4434,10 @@ function showGeneratedPreview(generated, campersAll, clinAll, warnings) {
         html += `<div class="sch-card" style="margin:0">
           <div class="sch-card-meta">${s.court}</div>
           <div class="sch-card-names">
-            <div class="sch-card-name" style="font-size:12px">${s.camper_1_name}</div>
-            <div class="sch-card-name" style="font-size:12px">${s.camper_2_name}</div>
-            <div class="sch-card-name" style="font-size:12px">${s.camper_3_name}</div>
+            <div class="sch-card-name" style="font-size:12px">${s.camper_1_name||''}</div>
+            <div class="sch-card-name" style="font-size:12px">${s.camper_2_name||''}</div>
+            <div class="sch-card-name" style="font-size:12px">${s.camper_3_name||''}</div>
+            ${s.camper_4_name?`<div class="sch-card-name" style="font-size:12px">${s.camper_4_name}</div>`:''}
           </div>
           <div class="sch-card-clinician" style="font-size:11px">${s.clinician_name}</div>
         </div>`;
@@ -4442,7 +4467,8 @@ async function saveGeneratedSchedule() {
     const payload = slots.map(s => ({
       day: s.day, time_slot: s.time_slot, court: s.court,
       camper_1_id: s.camper_1_id, camper_2_id: s.camper_2_id,
-      camper_3_id: s.camper_3_id, clinician_id: s.clinician_id
+      camper_3_id: s.camper_3_id, camper_4_id: s.camper_4_id,
+      clinician_id: s.clinician_id
     }));
 
     for (let i = 0; i < payload.length; i += 20) {
@@ -4472,8 +4498,8 @@ function downloadGeneratedCSV() {
   const slots = window._generatedSchedule;
   if (!slots || !slots.length) { toast('Generate first', true); return; }
 
-  const rows = [['Day','Time','Court','Camper 1','Camper 2','Camper 3','Clinician']];
-  slots.forEach(s => rows.push([s.day, s.time_slot, s.court, s.camper_1_name, s.camper_2_name, s.camper_3_name, s.clinician_name]));
+  const rows = [['Day','Time','Court','Camper 1','Camper 2','Camper 3','Camper 4','Clinician']];
+  slots.forEach(s => rows.push([s.day, s.time_slot, s.court, s.camper_1_name||'', s.camper_2_name||'', s.camper_3_name||'', s.camper_4_name||'', s.clinician_name||'']));
 
   const csv = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
   const blob = new Blob([csv], {type:'text/csv'});
@@ -4521,6 +4547,7 @@ async function downloadScheduleTemplate() {
     { header: 'Camper 1',  key: 'c1',    width: 22 },
     { header: 'Camper 2',  key: 'c2',    width: 22 },
     { header: 'Camper 3',  key: 'c3',    width: 22 },
+    { header: 'Camper 4',  key: 'c4',    width: 22 },
     { header: 'Clinician', key: 'cl',    width: 22 }
   ];
   sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
@@ -4532,7 +4559,7 @@ async function downloadScheduleTemplate() {
     const slots = blocks.all || [...(blocks.am||[]), ...(blocks.pm||[])];
     slots.forEach(time => {
       SCH_COURTS.forEach(court => {
-        sheet.addRow({ day, time, court, c1: '', c2: '', c3: '', cl: '' });
+        sheet.addRow({ day, time, court, c1: '', c2: '', c3: '', c4: '', cl: '' });
         rowCount++;
       });
     });
@@ -4547,7 +4574,7 @@ async function downloadScheduleTemplate() {
   const lastRow = rowCount + 1;
   if (camperList.length) {
     const camperRef = `Lists!$A$1:$A$${camperList.length}`;
-    ['D','E','F'].forEach(col => {
+    ['D','E','F','G'].forEach(col => {
       sheet.dataValidations.add(`${col}2:${col}${lastRow}`, {
         type: 'list',
         allowBlank: true,
@@ -4560,7 +4587,7 @@ async function downloadScheduleTemplate() {
     });
   }
   if (clinList.length) {
-    sheet.dataValidations.add(`G2:G${lastRow}`, {
+    sheet.dataValidations.add(`H2:H${lastRow}`, {
       type: 'list',
       allowBlank: true,
       formulae: [`Lists!$B$1:$B$${clinList.length}`],
@@ -4655,26 +4682,30 @@ async function uploadScheduleCSV(input) {
     const c1Raw = row['camper 1'] || '';
     const c2Raw = row['camper 2'] || '';
     const c3Raw = row['camper 3'] || '';
+    const c4Raw = row['camper 4'] || '';
     const clRaw = row['clinician'] || '';
-    if (!c1Raw && !c2Raw && !c3Raw && !clRaw) return; // skip rows with no participants
+    if (!c1Raw && !c2Raw && !c3Raw && !c4Raw && !clRaw) return; // skip rows with no participants
 
     const c1 = c1Raw ? findCamper(c1Raw) : null;
     const c2 = c2Raw ? findCamper(c2Raw) : null;
     const c3 = c3Raw ? findCamper(c3Raw) : null;
+    const c4 = c4Raw ? findCamper(c4Raw) : null;
     const cl = clRaw ? findClin(clRaw) : null;
 
     if (c1Raw && !c1) errors.push(`Row ${i+2}: "${c1Raw}" not found`);
     if (c2Raw && !c2) errors.push(`Row ${i+2}: "${c2Raw}" not found`);
     if (c3Raw && !c3) errors.push(`Row ${i+2}: "${c3Raw}" not found`);
+    if (c4Raw && !c4) errors.push(`Row ${i+2}: "${c4Raw}" not found`);
     if (clRaw && !cl) errors.push(`Row ${i+2}: clinician "${clRaw}" not found`);
 
     parsed.push({
       day: row.day, time_slot: row.time, court: row.court,
-      camper_1_id: c1?.id||null, camper_2_id: c2?.id||null, camper_3_id: c3?.id||null,
+      camper_1_id: c1?.id||null, camper_2_id: c2?.id||null, camper_3_id: c3?.id||null, camper_4_id: c4?.id||null,
       clinician_id: cl?.id||null,
       camper_1_name: c1 ? c1.first_name+' '+c1.last_name : c1Raw,
       camper_2_name: c2 ? c2.first_name+' '+c2.last_name : c2Raw,
       camper_3_name: c3 ? c3.first_name+' '+c3.last_name : c3Raw,
+      camper_4_name: c4 ? c4.first_name+' '+c4.last_name : c4Raw,
       clinician_name: cl ? (cl.name||cl.first_name+' '+cl.last_name) : clRaw
     });
   });
