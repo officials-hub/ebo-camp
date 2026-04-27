@@ -823,6 +823,7 @@ if('serviceWorker' in navigator){
 <div class="stitle" style="margin:0">CLINICIAN <span>LIST</span></div>
 <div style="display:flex;gap:6px">
 <button class="btn bor bsm" onclick="resetClinicianModal();openModal('mClinician')" type="button">➕ Add Clinician</button>
+<button class="btn bsec bsm" id="sendAllClinicianLoginsBtn" onclick="sendAllClinicianLogins()" type="button">Send All Logins</button>
 <button class="btn bred bsm" onclick="deleteAllClinicians()" type="button">Del All</button>
 </div>
 </div>
@@ -1772,6 +1773,39 @@ function openEditClinician(clinicianId){
   document.getElementById('clSendEmail').checked=false;
   document.getElementById('clErr').style.display='none';
   openModal('mClinician');
+}
+
+async function sendAllClinicianLogins(){
+  const eligible=[];
+  for(const cl of clinicians){
+    const e=(cl.email||'').trim().toLowerCase();
+    if(!e||!e.includes('@'))continue;
+    const parts=cl.name.split(' ');
+    const first=parts[0]||'';
+    const last=parts.slice(1).join(' ')||'';
+    const staff=staffList.find(s=>s.first_name===first&&s.last_name===last);
+    if(!staff||!staff.username||!staff.password)continue;
+    eligible.push({email:e,first,last,staff});
+  }
+  if(!eligible.length){toast('No clinicians with email + login on file',true);return;}
+  const ok=await cf(`Send login emails to all ${eligible.length} clinicians?`,'Send All','Cancel');
+  if(!ok)return;
+  const btn=document.getElementById('sendAllClinicianLoginsBtn');
+  btn.disabled=true;btn.textContent='⏳ Sending...';
+  let sent=0,failed=0;
+  for(const it of eligible){
+    try{
+      const res=await fetch(CFG.EMAIL_FN_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        to:it.email,from:CFG.FROM_EMAIL,
+        subject:'EBO Camp — Your Clinician Login',
+        html:buildClinicianEmailHTML(it.first,it.last,it.staff.username,it.staff.password)
+      })});
+      if(res.ok)sent++;else failed++;
+    }catch(e){failed++;}
+    await new Promise(r=>setTimeout(r,200));
+  }
+  btn.disabled=false;btn.textContent='Send All Logins';
+  toast(`✅ ${sent} sent${failed?', '+failed+' failed':''}`);
 }
 
 async function resendClinicianLogin(id){
