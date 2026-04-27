@@ -54,9 +54,15 @@ exports.handler = async (event) => {
     };
   }
 
-  const { to, from, subject, html, fromName } = payload;
+  let { to, from, subject, html, fromName } = payload;
 
-  if (!to || !subject || !html) {
+  // Strip stray `mailto:` prefix and whitespace — happens when emails are
+  // pasted from hyperlinks. Resend rejects `mailto:foo@bar.com` with 422.
+  const cleanAddr = (a) => String(a || '').trim().replace(/^mailto:/i, '').trim();
+  if (Array.isArray(to)) to = to.map(cleanAddr).filter(Boolean);
+  else to = cleanAddr(to);
+
+  if (!to || (Array.isArray(to) && to.length === 0) || !subject || !html) {
     return {
       statusCode: 400,
       headers: corsHeaders,

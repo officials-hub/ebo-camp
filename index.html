@@ -1681,7 +1681,7 @@ function renderAdminCampers(filter){
 }
 let editCId=null;
 async function saveCamper(){
-  const f=document.getElementById('cfFirst').value.trim(),l=document.getElementById('cfLast').value.trim(),e=document.getElementById('cfEmail').value.trim();
+  const f=document.getElementById('cfFirst').value.trim(),l=document.getElementById('cfLast').value.trim(),e=document.getElementById('cfEmail').value.trim().replace(/^mailto:/i,'').trim();
   if(!f||!l){document.getElementById('cfErr').textContent='Name required';document.getElementById('cfErr').style.display='block';return;}
   const pin=document.getElementById('cfPin').value.trim()||String(Math.floor(1000+Math.random()*9000));
   const data={first_name:f,last_name:l,email:e||null,city:document.getElementById('cfCity').value.trim(),state:document.getElementById('cfState').value.trim().toUpperCase(),type:document.getElementById('cfType').value,pin,photo:document.getElementById('cfPhoto').value.trim()||null,bio:document.getElementById('cfBio').value.trim()||null,conference:document.getElementById('cfConf').value.trim()||null};
@@ -1857,7 +1857,7 @@ function resetClinicianModal(){
 async function saveClinician(){
   const first=document.getElementById('clFirst').value.trim();
   const last=document.getElementById('clLast').value.trim();
-  const email=document.getElementById('clEmail').value.trim().toLowerCase();
+  const email=document.getElementById('clEmail').value.trim().replace(/^mailto:/i,'').trim().toLowerCase();
   const user=document.getElementById('clUser').value.trim().toLowerCase();
   const pass=document.getElementById('clPass').value;
   const role=document.getElementById('clRole').value;
