@@ -886,8 +886,8 @@ if('serviceWorker' in navigator){
   <div style="display:flex;gap:8px;flex-wrap:wrap">
     <button class="btn bor bsm" onclick="generateSchedule()" id="schGenBtn" type="button">Generate Schedule</button>
     <button class="btn bsec bsm" onclick="openAddGameModal()" type="button">➕ Add Game</button>
-    <button class="btn bsec bsm" onclick="document.getElementById('schCSVInput').click()" type="button">Upload CSV</button>
-    <input type="file" id="schCSVInput" accept=".csv" style="display:none" onchange="uploadScheduleCSV(this)">
+    <button class="btn bsec bsm" onclick="document.getElementById('schCSVInput').click()" type="button">Upload</button>
+    <input type="file" id="schCSVInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="uploadScheduleCSV(this)">
     <button class="btn bsec bsm" onclick="downloadScheduleTemplate()" type="button">Download Template</button>
     <button class="btn bsec bsm" onclick="toggleSchedulePublish()" id="schPublishBtn" type="button">Publish</button>
     <button class="btn bred bsm" onclick="clearSchedule()" type="button">Clear All</button>
@@ -4483,75 +4483,199 @@ function downloadGeneratedCSV() {
   a.click();
 }
 
-// ── DOWNLOAD BLANK TEMPLATE ───────────────────────────
-function downloadScheduleTemplate() {
-  const rows = [['Day','Time','Court','Camper 1','Camper 2','Camper 3','Clinician']];
+// ── DOWNLOAD BLANK TEMPLATE (xlsx with dropdowns) ─────
+async function downloadScheduleTemplate() {
+  if (!window.ExcelJS) {
+    await new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+  }
+
+  const [campersAll, cliniciansAll] = await Promise.all([
+    supa('campers','GET',null,'?select=id,first_name,last_name&order=last_name'),
+    supa('clinicians','GET',null,'?select=id,name&order=name')
+  ]);
+
+  const camperList = (campersAll||[])
+    .map(c => `${(c.last_name||'').trim()}, ${(c.first_name||'').trim()}`)
+    .filter(s => s.replace(/[\s,]/g,'') !== '');
+
+  // Clinicians have a single name field — split into Last, First (last word = last name)
+  const clinList = (cliniciansAll||[])
+    .map(c => {
+      const parts = (c.name||'').trim().split(/\s+/).filter(Boolean);
+      if (parts.length >= 2) return `${parts.slice(-1)[0]}, ${parts.slice(0,-1).join(' ')}`;
+      return parts[0] || '';
+    })
+    .filter(s => s.trim() !== '');
+
+  const wb = new ExcelJS.Workbook();
+  const sheet = wb.addWorksheet('Schedule');
+  sheet.columns = [
+    { header: 'Day',       key: 'day',   width: 24 },
+    { header: 'Time',      key: 'time',  width: 12 },
+    { header: 'Court',     key: 'court', width: 10 },
+    { header: 'Camper 1',  key: 'c1',    width: 22 },
+    { header: 'Camper 2',  key: 'c2',    width: 22 },
+    { header: 'Camper 3',  key: 'c3',    width: 22 },
+    { header: 'Clinician', key: 'cl',    width: 22 }
+  ];
+  sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F1F1F' } };
+  sheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+  let rowCount = 0;
   Object.entries(SCH_STRUCTURE).forEach(([day, blocks]) => {
     const slots = blocks.all || [...(blocks.am||[]), ...(blocks.pm||[])];
     slots.forEach(time => {
-      SCH_COURTS.forEach(court => rows.push([day, time, court, '','','','']));
+      SCH_COURTS.forEach(court => {
+        sheet.addRow({ day, time, court, c1: '', c2: '', c3: '', cl: '' });
+        rowCount++;
+      });
     });
   });
-  const csv = rows.map(r => r.map(v=>`"${v}"`).join(',')).join('\n');
-  const blob = new Blob([csv], {type:'text/csv'});
+
+  // Hidden Lists sheet for dropdown sources (avoids 255-char inline list limit)
+  const lists = wb.addWorksheet('Lists');
+  lists.state = 'hidden';
+  camperList.forEach((n, i) => lists.getCell(`A${i+1}`).value = n);
+  clinList.forEach((n, i) => lists.getCell(`B${i+1}`).value = n);
+
+  const lastRow = rowCount + 1;
+  if (camperList.length) {
+    const camperRef = `Lists!$A$1:$A$${camperList.length}`;
+    ['D','E','F'].forEach(col => {
+      sheet.dataValidations.add(`${col}2:${col}${lastRow}`, {
+        type: 'list',
+        allowBlank: true,
+        formulae: [camperRef],
+        showErrorMessage: true,
+        errorStyle: 'stop',
+        errorTitle: 'Invalid camper',
+        error: 'Choose a camper from the dropdown.'
+      });
+    });
+  }
+  if (clinList.length) {
+    sheet.dataValidations.add(`G2:G${lastRow}`, {
+      type: 'list',
+      allowBlank: true,
+      formulae: [`Lists!$B$1:$B$${clinList.length}`],
+      showErrorMessage: true,
+      errorStyle: 'stop',
+      errorTitle: 'Invalid clinician',
+      error: 'Choose a clinician from the dropdown.'
+    });
+  }
+
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'EBO_Schedule_Template_2026.csv';
+  a.download = 'EBO_Schedule_Template_2026.xlsx';
   a.click();
 }
 
-// ── UPLOAD CSV ────────────────────────────────────────
+// ── UPLOAD CSV / XLSX ─────────────────────────────────
 async function uploadScheduleCSV(input) {
   const file = input.files[0];
   if (!file) return;
-  const text = await file.text();
-  const lines = text.trim().split('\n');
-  const headers = lines[0].replace(/"/g,'').split(',').map(h=>h.trim().toLowerCase());
+
+  const isExcel = /\.(xlsx|xls)$/i.test(file.name);
+  let rows;
+
+  if (isExcel) {
+    if (!window.XLSX) {
+      await new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
+      });
+    }
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(new Uint8Array(buf), { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const raw = XLSX.utils.sheet_to_json(ws, { defval: '', header: 1 });
+    if (!raw.length) { toast('Empty file', true); input.value=''; return; }
+    const headers = raw[0].map(h => String(h||'').trim().toLowerCase());
+    rows = raw.slice(1).map(r => {
+      const o = {};
+      headers.forEach((h,j) => o[h] = String(r[j]==null ? '' : r[j]).trim());
+      return o;
+    });
+  } else {
+    const text = await file.text();
+    const lines = text.trim().split('\n');
+    const headers = lines[0].replace(/"/g,'').split(',').map(h=>h.trim().toLowerCase());
+    rows = lines.slice(1).map(line => {
+      const vals = line.replace(/"/g,'').split(',').map(v=>v.trim());
+      const o = {};
+      headers.forEach((h,j) => o[h] = vals[j] || '');
+      return o;
+    });
+  }
 
   const campersAll = await supa('campers','GET',null,'?select=id,first_name,last_name') || [];
   const clinAll = await supa('clinicians','GET',null,'?select=id,name') || [];
 
   const findCamper = name => {
     const n = name.toLowerCase().trim();
+    if (!n) return null;
     return campersAll.find(c => {
-      const full = (c.first_name+' '+c.last_name).toLowerCase();
-      const rev = (c.last_name+' '+c.first_name).toLowerCase();
-      return full.includes(n) || rev.includes(n) || n.includes(c.last_name.toLowerCase());
+      const first = (c.first_name||'').toLowerCase();
+      const last = (c.last_name||'').toLowerCase();
+      const full = `${first} ${last}`;
+      const rev = `${last} ${first}`;
+      const lastFirst = `${last}, ${first}`;
+      return lastFirst === n || full === n || rev === n || full.includes(n) || rev.includes(n);
     });
   };
 
   const findClin = name => {
     const n = name.toLowerCase().trim();
+    if (!n) return null;
     return clinAll.find(c => {
-      const full = (c.name || c.first_name+' '+c.last_name).toLowerCase();
-      return full.includes(n) || n.includes(full.split(' ')[0]);
+      const full = (c.name||'').toLowerCase();
+      const parts = (c.name||'').trim().split(/\s+/).filter(Boolean);
+      if (parts.length >= 2) {
+        const lastFirst = `${parts.slice(-1)[0]}, ${parts.slice(0,-1).join(' ')}`.toLowerCase();
+        if (lastFirst === n) return true;
+      }
+      return full === n || full.includes(n);
     });
   };
 
   const parsed = []; const errors = [];
-  lines.slice(1).forEach((line, i) => {
-    const vals = line.replace(/"/g,'').split(',').map(v=>v.trim());
-    const row = {};
-    headers.forEach((h,j) => row[h] = vals[j] || '');
+  rows.forEach((row, i) => {
     if (!row.day || !row.time || !row.court) return;
+    const c1Raw = row['camper 1'] || '';
+    const c2Raw = row['camper 2'] || '';
+    const c3Raw = row['camper 3'] || '';
+    const clRaw = row['clinician'] || '';
+    if (!c1Raw && !c2Raw && !c3Raw && !clRaw) return; // skip rows with no participants
 
-    const c1 = row['camper 1'] ? findCamper(row['camper 1']) : null;
-    const c2 = row['camper 2'] ? findCamper(row['camper 2']) : null;
-    const c3 = row['camper 3'] ? findCamper(row['camper 3']) : null;
-    const cl = row['clinician'] ? findClin(row['clinician']) : null;
+    const c1 = c1Raw ? findCamper(c1Raw) : null;
+    const c2 = c2Raw ? findCamper(c2Raw) : null;
+    const c3 = c3Raw ? findCamper(c3Raw) : null;
+    const cl = clRaw ? findClin(clRaw) : null;
 
-    if (row['camper 1'] && !c1) errors.push(`Row ${i+2}: "${row['camper 1']}" not found`);
-    if (row['camper 2'] && !c2) errors.push(`Row ${i+2}: "${row['camper 2']}" not found`);
-    if (row['camper 3'] && !c3) errors.push(`Row ${i+2}: "${row['camper 3']}" not found`);
+    if (c1Raw && !c1) errors.push(`Row ${i+2}: "${c1Raw}" not found`);
+    if (c2Raw && !c2) errors.push(`Row ${i+2}: "${c2Raw}" not found`);
+    if (c3Raw && !c3) errors.push(`Row ${i+2}: "${c3Raw}" not found`);
+    if (clRaw && !cl) errors.push(`Row ${i+2}: clinician "${clRaw}" not found`);
 
     parsed.push({
       day: row.day, time_slot: row.time, court: row.court,
       camper_1_id: c1?.id||null, camper_2_id: c2?.id||null, camper_3_id: c3?.id||null,
       clinician_id: cl?.id||null,
-      camper_1_name: c1 ? c1.first_name+' '+c1.last_name : row['camper 1'],
-      camper_2_name: c2 ? c2.first_name+' '+c2.last_name : row['camper 2'],
-      camper_3_name: c3 ? c3.first_name+' '+c3.last_name : row['camper 3'],
-      clinician_name: cl ? (cl.name||cl.first_name+' '+cl.last_name) : row['clinician']
+      camper_1_name: c1 ? c1.first_name+' '+c1.last_name : c1Raw,
+      camper_2_name: c2 ? c2.first_name+' '+c2.last_name : c2Raw,
+      camper_3_name: c3 ? c3.first_name+' '+c3.last_name : c3Raw,
+      clinician_name: cl ? (cl.name||cl.first_name+' '+cl.last_name) : clRaw
     });
   });
 
