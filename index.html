@@ -1661,10 +1661,43 @@ async function submitAdminEval(){
 function buildEmailHTML(camper,evals){
   const catTotals={};CFG.CATS.forEach(cat=>{catTotals[cat]=[];});
   evals.forEach(ev=>{CFG.CATS.forEach(cat=>{const k=catKey(cat);if(ev.scores?.[k]!=null)catTotals[cat].push(ev.scores[k]);});});
-  const catRows=CFG.CATS.map(cat=>{const v=catTotals[cat];const avg=v.length?(v.reduce((a,b)=>a+b,0)/v.length).toFixed(1):'N/A';const pct=v.length?((v.reduce((a,b)=>a+b,0)/v.length)/CFG.SCALE_MAX)*100:0;return`<tr><td style="padding:8px 12px;border-bottom:1px solid #333;color:#fff;font-weight:600;">${cat}</td><td style="padding:8px 12px;border-bottom:1px solid #333;"><div style="background:#333;border-radius:4px;height:12px;width:100%;overflow:hidden;"><div style="background:#C4C4C4;height:100%;width:${pct}%;border-radius:4px;"></div></div></td><td style="padding:8px 12px;border-bottom:1px solid #333;color:#C4C4C4;font-weight:700;text-align:center;font-size:18px;">${avg}</td></tr>`;}).join('');
+  const catRows=CFG.CATS.map(cat=>{
+    const v=catTotals[cat];
+    const avg=v.length?(v.reduce((a,b)=>a+b,0)/v.length).toFixed(1):'N/A';
+    const pct=v.length?((v.reduce((a,b)=>a+b,0)/v.length)/CFG.SCALE_MAX)*100:0;
+    return`<tr><td style="padding:10px 12px;border-bottom:1px solid #e5e5e5;color:#1a1a1a;font-weight:600;font-size:14px;">${cat}</td><td style="padding:10px 12px;border-bottom:1px solid #e5e5e5;"><div style="background:#e5e5e5;border-radius:4px;height:10px;width:100%;overflow:hidden;"><div style="background:#000000;height:100%;width:${pct}%;border-radius:4px;"></div></div></td><td style="padding:10px 12px;border-bottom:1px solid #e5e5e5;color:#000000;font-weight:700;text-align:center;font-size:18px;">${avg}</td></tr>`;
+  }).join('');
   const ov=evals.map(e=>e.overall_score).filter(v=>v!=null);const overall=ov.length?(ov.reduce((a,b)=>a+b,0)/ov.length).toFixed(1):'N/A';
-  const evalDetails=evals.map(ev=>{const meta=[];if(ev.clinician_name)meta.push(ev.clinician_name);if(ev.eval_date)meta.push(ev.eval_date);if(ev.court)meta.push('Court '+ev.court);if(ev.eval_time)meta.push(ev.eval_time);return`<div style="background:#1A1A1A;border-radius:8px;padding:12px;margin-bottom:8px;border-left:3px solid #C4C4C4;"><div style="font-size:12px;color:#C4C4C4;margin-bottom:6px;font-weight:700;">${meta.join(' · ')}</div>${ev.comments?`<div style="color:#ccc;font-size:13px;line-height:1.4;">${ev.comments}</div>`:''}</div>`;}).join('');
-  return`<div style="max-width:420px;margin:0 auto;font-family:Arial,sans-serif;background:#111;border-radius:8px;overflow:hidden;"><div style="background:#C4C4C4;padding:12px 16px;"><div style="color:#fff;font-size:14px;font-weight:700;letter-spacing:1px;">${CFG.CAMP_NAME}</div><div style="color:rgba(255,255,255,.8);font-size:11px;margin-top:2px;">EVALUATION RESULTS</div></div><div style="padding:16px;"><div style="color:#C4C4C4;font-size:16px;font-weight:700;margin-bottom:2px;">${camper.first_name} ${camper.last_name}</div><div style="color:#999;font-size:11px;margin-bottom:14px;">${evals.length} evaluation${evals.length!==1?'s':''}</div><table style="width:100%;border-collapse:collapse;margin-bottom:14px;"><thead><tr><th style="padding:6px 8px;text-align:left;color:#999;font-size:11px;border-bottom:2px solid #C4C4C4;">Category</th><th style="padding:6px 8px;text-align:left;color:#999;font-size:11px;border-bottom:2px solid #C4C4C4;">Score</th><th style="padding:6px 8px;text-align:center;color:#999;font-size:11px;border-bottom:2px solid #C4C4C4;width:40px;">Avg</th></tr></thead><tbody>${catRows}</tbody></table><div style="background:#C4C4C4;border-radius:6px;padding:14px;margin-bottom:14px;text-align:center;"><div style="color:rgba(0,0,0,.6);font-size:10px;text-transform:uppercase;letter-spacing:2px;margin-bottom:4px;">Overall Average</div><div style="color:#000;font-size:32px;font-weight:900;line-height:1;">${overall}</div><div style="color:rgba(0,0,0,.5);font-size:11px;">out of ${CFG.SCALE_MAX}</div></div>${evalDetails}<p style="color:#555;font-size:11px;text-align:center;margin:0;">${CFG.CAMP_NAME} · May 1 – 3, 2026</p></div></div>`;
+  const evalDetails=evals.map(ev=>{
+    const meta=[];if(ev.clinician_name)meta.push(ev.clinician_name);if(ev.eval_date)meta.push(ev.eval_date);if(ev.court)meta.push('Court '+ev.court);if(ev.eval_time)meta.push(ev.eval_time);
+    return`<div style="background:#f7f5f2;border:1px solid #e5e1da;border-radius:8px;padding:12px 14px;margin-bottom:8px;border-left:4px solid #000000;"><div style="font-size:12px;color:#000000;margin-bottom:6px;font-weight:700;letter-spacing:.04em;">${meta.join(' · ')}</div>${ev.comments?`<div style="color:#333333;font-size:13px;line-height:1.5;">${ev.comments}</div>`:''}</div>`;
+  }).join('');
+  const evalDetailsBlock=evalDetails?`<div style="margin-top:18px;"><div style="font-size:11px;font-weight:700;letter-spacing:.12em;color:#666666;text-transform:uppercase;margin-bottom:8px;">Evaluation Notes</div>${evalDetails}</div>`:'';
+  return`<div style="max-width:480px;margin:0 auto;font-family:Arial,Helvetica,sans-serif;background:#ffffff;border-radius:10px;overflow:hidden;border:1px solid #e0ddd8;box-shadow:0 4px 16px rgba(0,0,0,.08);">
+<div style="background:#000000;padding:18px 20px;">
+  <div style="color:#ffffff;font-size:15px;font-weight:700;letter-spacing:.06em;">${CFG.CAMP_NAME}</div>
+  <div style="color:#bdbdbd;font-size:11px;margin-top:3px;letter-spacing:.16em;text-transform:uppercase;">Evaluation Results</div>
+</div>
+<div style="padding:20px;background:#ffffff;">
+  <div style="color:#1a1a1a;font-size:20px;font-weight:800;margin-bottom:4px;letter-spacing:.02em;">${camper.first_name} ${camper.last_name}</div>
+  <div style="color:#666666;font-size:12px;margin-bottom:18px;">${evals.length} evaluation${evals.length!==1?'s':''}</div>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:16px;background:#ffffff;">
+    <thead><tr>
+      <th style="padding:8px 12px;text-align:left;color:#666666;font-size:11px;border-bottom:2px solid #000000;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">Category</th>
+      <th style="padding:8px 12px;text-align:left;color:#666666;font-size:11px;border-bottom:2px solid #000000;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">Score</th>
+      <th style="padding:8px 12px;text-align:center;color:#666666;font-size:11px;border-bottom:2px solid #000000;width:48px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">Avg</th>
+    </tr></thead>
+    <tbody>${catRows}</tbody>
+  </table>
+  <div style="background:#000000;border-radius:8px;padding:18px;text-align:center;">
+    <div style="color:#bdbdbd;font-size:10px;text-transform:uppercase;letter-spacing:.18em;margin-bottom:6px;font-weight:700;">Overall Average</div>
+    <div style="color:#ffffff;font-size:36px;font-weight:900;line-height:1;">${overall}</div>
+    <div style="color:#bdbdbd;font-size:11px;margin-top:4px;">out of ${CFG.SCALE_MAX}</div>
+  </div>
+  ${evalDetailsBlock}
+  <p style="color:#999999;font-size:11px;text-align:center;margin:18px 0 0;">${CFG.CAMP_NAME} · May 1 – 3, 2026</p>
+</div>
+</div>`;
 }
 
 // ═══ ADMIN PORTAL ═══
