@@ -947,6 +947,16 @@ if('serviceWorker' in navigator){
   <div class="stitle" style="margin:0">CAMP <span>INFO</span></div>
   <button class="btn bor bsm" onclick="document.getElementById('pdfFileInput').click()" type="button">➕ Upload PDF</button>
 </div>
+<div style="background:var(--gray);border:1px solid var(--b2);border-radius:var(--r);padding:12px 14px;margin-bottom:14px">
+  <div style="font-family:'Oswald',sans-serif;font-size:14px;letter-spacing:.06em;color:var(--or);margin-bottom:8px">📌 MESSAGE BOARD</div>
+  <div style="font-size:12px;color:var(--tx2);margin-bottom:8px">This message appears at the top of Camp Info for all campers and clinicians.</div>
+  <textarea class="finput" id="campInfoMessageInput" placeholder="Type a message to post on the camp info board..." style="min-height:90px;resize:vertical;margin-bottom:6px"></textarea>
+  <div style="display:flex;gap:8px">
+    <button class="btn bor" style="flex:1;padding:10px" onclick="saveCampInfoMessage()" type="button">Post Message</button>
+    <button class="btn bsec" style="flex:0 0 auto;padding:10px 14px" onclick="clearCampInfoMessage()" type="button">Clear</button>
+  </div>
+  <div id="campInfoMessageStatus" style="margin-top:6px;font-size:11px;color:var(--tx3);text-align:right"></div>
+</div>
 <input type="file" id="pdfFileInput" accept="application/pdf" style="display:none" onchange="handlePDFUpload(event)">
 <div id="campInfoList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px"></div>
 <div id="campInfoEmpty" style="color:var(--tx3);font-size:13px;text-align:center;padding:24px 0">No documents uploaded yet.</div>
@@ -1457,9 +1467,41 @@ function renderStaffHistory(){
     const dt=new Date(e.created_at).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
     const row=document.createElement('div');
     row.style.cssText='background:var(--gray);border:1px solid var(--b2);border-radius:var(--r);padding:12px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:10px';
-    row.innerHTML=`<div><div style="font-size:15px;font-weight:600;color:var(--tx)">${c.first_name} ${c.last_name}</div><div style="font-size:11px;color:var(--tx3);margin-top:2px">${e.eval_date||''} · Court ${e.court||'—'}</div><div style="font-size:11px;color:var(--tx3)">${dt}</div></div><div style="text-align:right"><div style="font-family:Oswald,sans-serif;font-size:32px;color:var(--or);line-height:1">${(e.overall_score||0).toFixed(1)}</div><div style="font-size:9px;font-weight:700;letter-spacing:.08em;color:var(--tx3)">/ ${CFG.SCALE_MAX}</div></div>`;
+    row.innerHTML=`<div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:600;color:var(--tx)">${c.first_name} ${c.last_name}</div><div style="font-size:11px;color:var(--tx3);margin-top:2px">${e.eval_date||''} · Court ${e.court||'—'}</div><div style="font-size:11px;color:var(--tx3)">${dt}</div><button class="btn bsec bsm" style="margin-top:8px" onclick="editStaffEval('${e.id}')">Edit</button></div><div style="text-align:right;flex-shrink:0"><div style="font-family:Oswald,sans-serif;font-size:32px;color:var(--or);line-height:1">${(e.overall_score||0).toFixed(1)}</div><div style="font-size:9px;font-weight:700;letter-spacing:.08em;color:var(--tx3)">/ ${CFG.SCALE_MAX}</div></div>`;
     con.appendChild(row);
   });
+}
+
+function editStaffEval(evalId){
+  const ev=evaluations.find(e=>String(e.id)===String(evalId));
+  if(!ev){toast('Evaluation not found',true);return;}
+  if(!CU||ev.clinician_name!==CU.first_name+' '+CU.last_name){toast('You can only edit your own evals',true);return;}
+  sView('evaluate');
+  populateStaffEvalForm();
+  const sel=document.getElementById('seCamper');
+  if(sel){sel.value=ev.camper_id;onStaffCamperSelected();}
+  // Pre-fill metadata
+  if(ev.eval_date)document.getElementById('seDate').value=ev.eval_date;
+  if(ev.court)document.getElementById('seCourt').value=ev.court;
+  if(ev.eval_time)document.getElementById('seTime').value=ev.eval_time;
+  // Pre-fill scores
+  CFG.CATS.forEach((cat,i)=>{
+    const v=ev.scores?.[catKey(cat)];
+    if(v!=null)pickScore('se',i,v);
+  });
+  // Pre-fill top10
+  if(ev.scores?.top10===true||ev.scores?.top10===false){
+    const yes=ev.scores.top10===true;
+    const ynBtns=document.querySelectorAll('#seYnCard .yn-btn');
+    ynBtns.forEach(b=>b.classList.remove('yes','no'));
+    if(ynBtns.length>=2){(yes?ynBtns[0]:ynBtns[1]).classList.add(yes?'yes':'no');}
+    ynState.top10=yes;
+  }
+  // Pre-fill comments
+  document.getElementById('seComments').value=ev.comments||'';
+  _editingEvalId=ev.id;
+  document.getElementById('seSubmitBtn').textContent='UPDATE EVALUATION';
+  document.getElementById('seStatus').innerHTML='<div style="font-size:12px;color:var(--or);text-align:center;padding:6px">✏️ Editing evaluation — submit to update</div>';
 }
 function renderStaffRoster(filter){
   filter=(filter||'').toLowerCase().trim();
@@ -1509,7 +1551,7 @@ function updateOverallScore(pfx){
 }
 function resetEvalForm(pfx){
   CFG.CATS.forEach((_,i)=>{document.querySelectorAll(`#${pfx}ScB_${i} .score-box`).forEach(b=>b.classList.remove('sel'));document.getElementById(`${pfx}ScD_${i}`).textContent='—';});
-  if(pfx==='se'){document.getElementById('seComments').value='';document.getElementById('seDate').value=new Date().toISOString().split('T')[0];document.getElementById('seCourt').value='';document.getElementById('seTime').value='';document.getElementById('seStatus').innerHTML='';ynState={top10:null};}
+  if(pfx==='se'){document.getElementById('seComments').value='';document.getElementById('seDate').value=new Date().toISOString().split('T')[0];document.getElementById('seCourt').value='';document.getElementById('seTime').value='';document.getElementById('seStatus').innerHTML='';ynState={top10:null};_editingEvalId=null;document.getElementById('seSubmitBtn').textContent='SUBMIT EVALUATION';}
   if(pfx==='ae'){document.getElementById('aeComments').value='';document.getElementById('aeDate').value=new Date().toISOString().split('T')[0];document.getElementById('aeCourt').value='';document.getElementById('aeTime').value='';document.getElementById('aeStatus').innerHTML='';ynStateAe={top10:null};}
   document.querySelectorAll(`#${pfx}YnCard .yn-btn`).forEach(b=>b.classList.remove('yes','no'));
   updateOverallScore(pfx);
@@ -1523,6 +1565,28 @@ function setYN(field,val,btn,pfx){
 }
 
 // ═══ SUBMIT EVAL (staff) ═══
+// Shared: send (or resend) the eval results email to a camper.
+// Updates the status div with success/failure markers.
+async function emailEvalToCamper(camperId,statusEl){
+  const camper=campers.find(c=>String(c.id)===String(camperId));
+  if(!camper||!camper.email){
+    if(statusEl)statusEl.innerHTML+='<div class="email-ok">✓ Saved (no email on file)</div>';
+    return false;
+  }
+  if(statusEl)statusEl.innerHTML+='<div class="email-pend">Sending email...</div>';
+  const camperEvals=evaluations.filter(e=>e.camper_id===camperId);
+  try{
+    const res=await fetch(CFG.EMAIL_FN_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:camper.email,from:CFG.FROM_EMAIL,subject:`${CFG.CAMP_NAME} — Your Evaluation Results`,html:buildEmailHTML(camper,camperEvals)})});
+    if(statusEl)statusEl.innerHTML=res.ok?'<div class="email-ok">✓ Saved &amp; emailed</div>':'<div class="email-ok">✓ Saved</div><div class="email-err">✕ Email failed</div>';
+    return res.ok;
+  }catch(e){
+    console.error('Email failed',e);
+    if(statusEl)statusEl.innerHTML='<div class="email-ok">✓ Saved</div><div class="email-err">✕ Email failed</div>';
+    return false;
+  }
+}
+
+let _editingEvalId=null;
 async function submitStaffEval(){
   const cid=document.getElementById('seCamper').value;if(!cid)return;
   const clinName=CU.first_name+' '+CU.last_name;
@@ -1537,10 +1601,20 @@ async function submitStaffEval(){
   scores.top10=ynState.top10;
   const comments=document.getElementById('seComments').value.trim();
   const overall=parseFloat(document.getElementById('seOverall').textContent);
+  const payload={camper_id:cid,clinician_name:clinName,eval_date:evalDate||null,court:court||null,eval_time:time||null,scores,comments,overall_score:overall};
   try{
-    await supa('evaluations','POST',{camper_id:cid,clinician_name:clinName,eval_date:evalDate||null,court:court||null,eval_time:time||null,scores,comments,overall_score:overall});
-    st.innerHTML='<div class="email-ok">✓ Evaluation saved</div>';
-    await loadAll();toast('Evaluation saved!');resetEvalForm('se');document.getElementById('seCamper').value='';document.getElementById('seForm').style.display='none';
+    if(_editingEvalId){
+      await supa('evaluations','PATCH',payload,`?id=eq.${_editingEvalId}`);
+      st.innerHTML='<div class="email-ok">✓ Evaluation updated</div>';
+    }else{
+      await supa('evaluations','POST',payload);
+      st.innerHTML='<div class="email-ok">✓ Evaluation saved</div>';
+    }
+    await loadAll();
+    await emailEvalToCamper(cid,st);
+    toast(_editingEvalId?'Evaluation updated!':'Evaluation saved!');
+    _editingEvalId=null;
+    resetEvalForm('se');document.getElementById('seCamper').value='';document.getElementById('seForm').style.display='none';
   }catch(e){console.error(e);toast('Error saving',true);st.innerHTML='<div class="email-err">✕ Error saving</div>';}
   btn.disabled=false;btn.textContent='SUBMIT EVALUATION';
 }
@@ -1565,17 +1639,9 @@ async function submitAdminEval(){
   try{
     await supa('evaluations','POST',{camper_id:cid,clinician_name:clinName,eval_date:evalDate||null,court:court||null,eval_time:time||null,scores,comments,overall_score:overall});
     st.innerHTML='<div class="email-ok">✓ Evaluation saved</div>';
-    const camper=campers.find(c=>c.id===cid);
-    if(camper&&camper.email){
-      st.innerHTML+='<div class="email-pend">Sending email...</div>';
-      await loadAll();
-      const camperEvals=evaluations.filter(e=>e.camper_id===cid);
-      try{
-        const res=await fetch(CFG.EMAIL_FN_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:camper.email,from:CFG.FROM_EMAIL,subject:`${CFG.CAMP_NAME} — Your Evaluation Results`,html:buildEmailHTML(camper,camperEvals)})});
-        st.innerHTML=res.ok?'<div class="email-ok">✓ Saved & emailed</div>':'<div class="email-ok">✓ Saved</div><div class="email-err">✕ Email failed</div>';
-      }catch(e){st.innerHTML='<div class="email-ok">✓ Saved</div><div class="email-err">✕ Email failed</div>';}
-    }else{st.innerHTML='<div class="email-ok">✓ Saved (no email on file)</div>';}
-    await loadAll();toast('Evaluation saved!');resetEvalForm('ae');document.getElementById('aeCamper').value='';
+    await loadAll();
+    await emailEvalToCamper(cid,st);
+    toast('Evaluation saved!');resetEvalForm('ae');document.getElementById('aeCamper').value='';
   }catch(e){console.error(e);toast('Error saving',true);st.innerHTML='<div class="email-err">✕ Error saving</div>';}
   btn.disabled=false;btn.textContent='SUBMIT & EMAIL CAMPER';
 }
@@ -1649,7 +1715,7 @@ function _aTabActions(name){
   if(name==='rankings')renderAdminRankings();
   if(name==='profiles')renderProfiles('');
   if(name==='chat'){markChatRead();renderChat('Admin');}
-  if(name==='campinfo'){renderCampInfoDocs();}
+  if(name==='campinfo'){renderCampInfoDocs();const mi=document.getElementById('campInfoMessageInput');if(mi)mi.value=settings['camp_info_message']||'';const ms=document.getElementById('campInfoMessageStatus');const postedAt=settings['camp_info_message_posted_at'];if(ms)ms.textContent=postedAt?'Last posted '+new Date(postedAt).toLocaleString():'';}
   if(name==='gamefilm'){renderGameFilmPanel();}
 }
 function updateAdminStats(){
@@ -2847,14 +2913,20 @@ function openCamperProfile(id,evalContext){
   else body+='<div style="font-size:13px;color:var(--tx3);padding:10px 0">No bio yet.</div>';
   body+=`</div>`;
   body+=`<div style="padding:0 16px 16px"><div class="pmod-sec" style="font-family:'Oswald',sans-serif;font-size:13px;color:var(--or);letter-spacing:.08em;margin-bottom:8px">🎥 GAME FILM</div><div id="pmFilmList"></div></div>`;
-  // If opened from clinician schedule, show Evaluate button with pre-filled context
-  if(evalContext){
-    const [court,timeSlot,day]=evalContext.split('|');
-    const ctxLine=[court,timeSlot,day].filter(Boolean).join(' · ');
-    body+=`<div style="padding:0 16px 12px">
-      ${ctxLine?`<div style="font-size:12px;color:var(--tx3);text-align:center;margin-bottom:10px;letter-spacing:.04em">${ctxLine}</div>`:''}
-      <button class="btn" style="width:100%;background:var(--or);color:#fff;border:none;margin-bottom:10px" onclick="closeModal('mProfile');openEvalFromSchedule('${id}','${court||''}','${timeSlot||''}','${day||''}')">Evaluate ${c.first_name}</button>
-    </div>`;
+  // Clinician/staff: show Evaluate button. If opened from schedule, pre-fill court/time/day.
+  if(CR==='staff'&&CU&&String(CU.id)!==String(id)){
+    if(evalContext){
+      const [court,timeSlot,day]=evalContext.split('|');
+      const ctxLine=[court,timeSlot,day].filter(Boolean).join(' · ');
+      body+=`<div style="padding:0 16px 12px">
+        ${ctxLine?`<div style="font-size:12px;color:var(--tx3);text-align:center;margin-bottom:10px;letter-spacing:.04em">${ctxLine}</div>`:''}
+        <button class="btn" style="width:100%;background:var(--or);color:#fff;border:none;margin-bottom:10px" onclick="closeModal('mProfile');openEvalFromSchedule('${id}','${court||''}','${timeSlot||''}','${day||''}')">Evaluate ${c.first_name}</button>
+      </div>`;
+    }else{
+      body+=`<div style="padding:0 16px 12px">
+        <button class="btn" style="width:100%;background:var(--or);color:#fff;border:none;margin-bottom:10px" onclick="closeModal('mProfile');openEvalFromSchedule('${id}','','','')">📝 Evaluate ${c.first_name}</button>
+      </div>`;
+    }
   }
   body+=`<div style="padding:0 16px 40px"><button class="btn bsec" style="width:100%" onclick="closeModal('mProfile')">Close</button></div>`;
   document.getElementById('pmBody').innerHTML=body;
@@ -3344,9 +3416,16 @@ function renderCampInfoViewer(prefix){
   const list=document.getElementById(prefix+'CampInfoList');
   const empty=document.getElementById(prefix+'CampInfoEmpty');
   if(!list)return;
-  if(!campDocs.length){list.innerHTML='';empty.style.display='block';return;}
+  const msg=(settings['camp_info_message']||'').trim();
+  const msgPostedAt=settings['camp_info_message_posted_at']||'';
+  let html='';
+  if(msg){
+    const postedLine=msgPostedAt?`<div style="font-size:11px;color:var(--tx3);margin-top:8px">Posted ${new Date(msgPostedAt).toLocaleDateString()}</div>`:'';
+    html+=`<div style="background:linear-gradient(135deg,#1a0800,#2a1000);border:1px solid var(--orb);border-radius:var(--r);padding:14px 16px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-size:18px">📌</span><div style="font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:.1em;color:var(--or)">MESSAGE FROM CAMP DIRECTOR</div></div><div style="font-size:14px;color:#f0f0eb;line-height:1.6;white-space:pre-wrap">${escapeHtml(msg)}</div>${postedLine}</div>`;
+  }
+  if(!campDocs.length&&!msg){list.innerHTML='';empty.style.display='block';return;}
   empty.style.display='none';
-  list.innerHTML=campDocs.map(doc=>`
+  html+=campDocs.map(doc=>`
     <div style="display:flex;align-items:center;justify-content:space-between;background:var(--gray2);border:1px solid var(--b2);border-radius:var(--r);padding:12px 14px;box-shadow:0 1px 4px rgba(0,0,0,.05)">
       <div style="display:flex;align-items:center;gap:10px">
         <span style="font-size:22px">📄</span>
@@ -3354,6 +3433,34 @@ function renderCampInfoViewer(prefix){
       </div>
       <a href="${doc.data}" download="${escapeHtml(doc.name)}" class="btn bor bsm">⬇ Download</a>
     </div>`).join('');
+  list.innerHTML=html;
+}
+
+async function saveCampInfoMessage(){
+  const text=(document.getElementById('campInfoMessageInput')?.value||'').trim();
+  const status=document.getElementById('campInfoMessageStatus');
+  if(status)status.textContent='Saving...';
+  try{
+    const now=new Date().toISOString();
+    const existing=await supa('settings','GET',null,'?key=eq.camp_info_message');
+    if(existing&&existing.length>0){await supa('settings','PATCH',{value:text},'?key=eq.camp_info_message');}
+    else{await supa('settings','POST',{key:'camp_info_message',value:text});}
+    const existingDate=await supa('settings','GET',null,'?key=eq.camp_info_message_posted_at');
+    if(existingDate&&existingDate.length>0){await supa('settings','PATCH',{value:now},'?key=eq.camp_info_message_posted_at');}
+    else{await supa('settings','POST',{key:'camp_info_message_posted_at',value:now});}
+    settings['camp_info_message']=text;
+    settings['camp_info_message_posted_at']=now;
+    if(status)status.textContent=text?'✓ Posted '+new Date(now).toLocaleString():'✓ Cleared';
+    toast(text?'Message posted':'Message cleared');
+  }catch(e){console.error(e);if(status)status.textContent='Error saving';toast('Error saving message',true);}
+}
+
+async function clearCampInfoMessage(){
+  const ok=await cf('Clear the message board?','Clear','Cancel');
+  if(!ok)return;
+  const inp=document.getElementById('campInfoMessageInput');
+  if(inp)inp.value='';
+  await saveCampInfoMessage();
 }
 
 function handlePDFUpload(e){
