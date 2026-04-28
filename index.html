@@ -3268,12 +3268,33 @@ async function deleteChatMsg(id){
 }
 
 // ═══ MY PROFILE ═══
+// Find the clinicians table row that matches the logged-in staff user (case- and whitespace-insensitive on name).
+function findMatchingClinician(){
+  if(!CU)return null;
+  const norm=s=>(s||'').trim().toLowerCase().replace(/\s+/g,' ');
+  const fullName=norm((CU.first_name||'')+' '+(CU.last_name||''));
+  return clinicians.find(c=>norm(c.name)===fullName)||null;
+}
+
 function renderMyProfile(role){
   const con=document.getElementById(role==='camper'?'cMyProfileCon':'sMyProfileCon');
   if(!con)return;
-  const initials=(CU.first_name?.[0]||'')+(CU.last_name?.[0]||'');
-  const photoHtml=CU.photo
-    ?`<img src="${CU.photo}" onerror="this.parentElement.innerHTML='<span>${initials}</span>'">`
+  // For clinicians (role='staff'), profile fields like bio/photo/city/state/conference live on the
+  // clinicians table, not the staff table. Pull them from the matching clinicians row.
+  const clRow=role==='staff'?findMatchingClinician():null;
+  const profile={
+    first_name:CU.first_name||'',
+    last_name:CU.last_name||'',
+    city:(clRow?clRow.city:CU.city)||'',
+    state:(clRow?clRow.state:CU.state)||'',
+    phone:(clRow?clRow.phone:CU.phone)||'',
+    conference:(clRow?clRow.conference:CU.conference)||'',
+    bio:(clRow?clRow.bio:CU.bio)||'',
+    photo:(clRow?clRow.photo:CU.photo)||''
+  };
+  const initials=(profile.first_name[0]||'')+(profile.last_name[0]||'');
+  const photoHtml=profile.photo
+    ?`<img src="${profile.photo}" onerror="this.parentElement.innerHTML='<span>${initials}</span>'">`
     :`<span>${initials}</span>`;
   con.innerHTML=`
     <div class="profile-photo-wrap">
@@ -3286,32 +3307,32 @@ function renderMyProfile(role){
     </div>
     <div class="form-group" style="margin-bottom:10px">
       <label class="flabel">First Name</label>
-      <input class="finput" id="mpFirst" value="${CU.first_name||''}" placeholder="First">
+      <input class="finput" id="mpFirst" value="${profile.first_name}" placeholder="First">
     </div>
     <div class="form-group" style="margin-bottom:10px">
       <label class="flabel">Last Name</label>
-      <input class="finput" id="mpLast" value="${CU.last_name||''}" placeholder="Last">
+      <input class="finput" id="mpLast" value="${profile.last_name}" placeholder="Last">
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-      <div><label class="flabel">City</label><input class="finput" id="mpCity" value="${CU.city||''}" placeholder="Denver" style="margin-bottom:0"></div>
-      <div><label class="flabel">State</label><input class="finput" id="mpState" value="${CU.state||''}" placeholder="CO" maxlength="2" style="margin-bottom:0"></div>
+      <div><label class="flabel">City</label><input class="finput" id="mpCity" value="${profile.city}" placeholder="Denver" style="margin-bottom:0"></div>
+      <div><label class="flabel">State</label><input class="finput" id="mpState" value="${profile.state}" placeholder="CO" maxlength="2" style="margin-bottom:0"></div>
     </div>
     <div style="margin-bottom:10px">
       <label class="flabel">Phone</label>
-      <input class="finput" id="mpPhone" value="${CU.phone||''}" placeholder="(303) 555-1234" inputmode="tel">
+      <input class="finput" id="mpPhone" value="${profile.phone}" placeholder="(303) 555-1234" inputmode="tel">
     </div>
     <div style="margin-bottom:10px">
       <label class="flabel">Conference(s)</label>
-      <input class="finput" id="mpConf" value="${CU.conference||''}" placeholder="RMAC, Region 9...">
+      <input class="finput" id="mpConf" value="${profile.conference}" placeholder="RMAC, Region 9...">
     </div>
     <div style="margin-bottom:16px">
       <label class="flabel">Bio / Resume</label>
-      <textarea class="finput" id="mpBio" rows="5" style="resize:vertical;min-height:90px" placeholder="Tell us about yourself...">${CU.bio||''}</textarea>
+      <textarea class="finput" id="mpBio" rows="5" style="resize:vertical;min-height:90px" placeholder="Tell us about yourself...">${profile.bio}</textarea>
     </div>
     <div id="mpPhotoUrlWrap" style="margin-bottom:16px">
       <div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'" style="font-size:11px;color:var(--tx3);cursor:pointer;margin-bottom:4px">🔗 Or paste a photo URL ▾</div>
       <div style="display:none">
-        <input class="finput" id="mpPhotoUrl" value="${CU.photo&&CU.photo.startsWith('http')?CU.photo:''}" placeholder="https://..." oninput="updateMyPhotoPreview('${role}')">
+        <input class="finput" id="mpPhotoUrl" value="${profile.photo&&profile.photo.startsWith('http')?profile.photo:''}" placeholder="https://..." oninput="updateMyPhotoPreview('${role}')">
       </div>
     </div>
     <button class="btn bor" style="width:100%;padding:14px;font-family:'Oswald',sans-serif;font-size:18px;letter-spacing:.08em" onclick="saveMyProfile('${role}')">SAVE PROFILE</button>
@@ -3363,8 +3384,11 @@ async function saveMyProfile(role){
   const last=document.getElementById('mpLast')?.value.trim();
   if(!first||!last){status.textContent='Name is required.';status.style.color='var(--red2)';return;}
   const photoUrl=document.getElementById('mpPhotoUrl')?.value.trim();
-  // Use uploaded base64 if available, then URL field, then existing photo
-  const photo=CU._pendingPhoto||(photoUrl&&photoUrl.startsWith('http')?photoUrl:(CU.photo||null));
+  // For clinicians, the existing photo lives on the clinicians row, not on CU (which is the staff record).
+  const existingClRow=role==='staff'?findMatchingClinician():null;
+  const existingPhoto=(existingClRow?existingClRow.photo:CU.photo)||null;
+  // Use uploaded base64 if available, then URL field, then existing photo (so saving without re-uploading doesn't wipe it)
+  const photo=CU._pendingPhoto||(photoUrl&&photoUrl.startsWith('http')?photoUrl:existingPhoto);
   const city=document.getElementById('mpCity')?.value.trim()||null;
   const state=document.getElementById('mpState')?.value.trim().toUpperCase()||null;
   const phone=document.getElementById('mpPhone')?.value.trim()||null;
