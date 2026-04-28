@@ -9,10 +9,15 @@
  * Env vars (set in Netlify dashboard):
  *   JOTFORM_API_KEY    — your JotForm API key
  *   JOTFORM_FORM_ID    — the form ID to pull submissions from
+ *   JOTFORM_MIN_DATE   — optional cutoff (e.g. 2026-01-01). Submissions older
+ *                        than this are filtered both server-side (via the
+ *                        JotForm API filter param) and client-side as a
+ *                        safety net. Defaults to 2026-01-01 to keep a
+ *                        re-used form from importing previous-year campers.
  *   SUPABASE_URL
  *   SUPABASE_ANON_KEY
  *
- * Returns: { ok, fetched, created, duplicates, invalid, errors, details }
+ * Returns: { ok, fetched, skipped_old, created, duplicates, invalid, errors, details }
  */
 
 const { extractCamper, insertCamper } = require('./_jotform-shared');
@@ -40,12 +45,19 @@ exports.handler = async (event) => {
     return json(500, { ok: false, error: 'SUPABASE_URL or SUPABASE_ANON_KEY not configured' });
   }
 
-  // Page through all submissions in batches of 1000 (JotForm API max).
+  // Cutoff date — JotForm forms are often re-used year over year, so
+  // skip anything submitted before this date. ISO-ish format YYYY-MM-DD.
+  const minDateStr = (process.env.JOTFORM_MIN_DATE || '2026-01-01').trim();
+  const minDate = new Date(minDateStr + 'T00:00:00Z');
+  // JotForm filter param expects 'YYYY-MM-DD HH:MM:SS' and a JSON shape.
+  const filterJson = JSON.stringify({ 'created_at:gt': minDateStr + ' 00:00:00' });
+
+  // Page through submissions in batches of 1000 (JotForm API max).
   const all = [];
   let offset = 0;
   const limit = 1000;
   for (;;) {
-    const url = `https://api.jotform.com/form/${formId}/submissions?apiKey=${encodeURIComponent(apiKey)}&limit=${limit}&offset=${offset}&orderby=created_at`;
+    const url = `https://api.jotform.com/form/${formId}/submissions?apiKey=${encodeURIComponent(apiKey)}&limit=${limit}&offset=${offset}&orderby=created_at&filter=${encodeURIComponent(filterJson)}`;
     const res = await fetch(url);
     if (!res.ok) {
       const body = await res.text().catch(() => '');
@@ -59,9 +71,18 @@ exports.handler = async (event) => {
     if (offset > 10000) break; // safety stop
   }
 
-  const summary = { fetched: all.length, created: 0, duplicates: 0, invalid: 0, errors: 0, details: [] };
+  const summary = { fetched: all.length, skipped_old: 0, created: 0, duplicates: 0, invalid: 0, errors: 0, min_date: minDateStr, details: [] };
 
   for (const sub of all) {
+    // Client-side safety filter in case the JotForm filter param ever drifts.
+    // sub.created_at format: 'YYYY-MM-DD HH:MM:SS'
+    if (sub.created_at) {
+      const subDate = new Date(sub.created_at.replace(' ', 'T') + 'Z');
+      if (!isNaN(subDate.getTime()) && subDate < minDate) {
+        summary.skipped_old++;
+        continue;
+      }
+    }
     // The JotForm API nests answers as { qid: { name, text, answer } }.
     // Flatten to { fieldName: answer } so extractCamper's key-substring lookups still work.
     const flat = {};

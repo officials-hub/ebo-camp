@@ -2427,7 +2427,8 @@ async function runJotformBackfill(){
       toast('Backfill failed: '+msg,true);
       return;
     }
-    const summary=`Fetched ${data.fetched}. Created ${data.created}, ${data.duplicates} dupes skipped`+(data.invalid?`, ${data.invalid} invalid`:'')+(data.errors?`, ${data.errors} errors`:'')+'.';
+    const cutoff=data.min_date?` (cutoff ${data.min_date})`:'';
+    const summary=`Fetched ${data.fetched}${cutoff}. Created ${data.created}, ${data.duplicates} dupes skipped`+(data.skipped_old?`, ${data.skipped_old} pre-cutoff skipped`:'')+(data.invalid?`, ${data.invalid} invalid`:'')+(data.errors?`, ${data.errors} errors`:'')+'.';
     if(status){status.style.color=data.errors?'var(--red2)':'var(--grn)';status.textContent='✓ '+summary;}
     toast(`✓ ${data.created} new camper${data.created===1?'':'s'} imported`);
     if(data.created>0){await loadAll();renderAdminCampers();updateAdminStats();populateAdminForms();}
