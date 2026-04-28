@@ -3311,6 +3311,7 @@ function renderMyProfile(role){
       <input type="file" id="mpPhotoUpload" accept="image/*" style="display:none" onchange="handleMyPhotoUpload(this,'${role}')">
       <button type="button" onclick="document.getElementById('mpPhotoUpload').click()" style="background:var(--gray2);border:1px solid var(--b3);border-radius:var(--rs);padding:8px 18px;font-family:'Source Sans 3',sans-serif;font-size:13px;color:var(--tx2);cursor:pointer;margin-top:4px">📷 Upload Photo</button>
     </div>
+    <button class="btn bor" style="width:100%;padding:13px;font-family:'Oswald',sans-serif;font-size:16px;letter-spacing:.08em;margin-bottom:14px" onclick="saveMyProfile('${role}')">💾 SAVE PROFILE</button>
     <div class="form-group" style="margin-bottom:10px">
       <label class="flabel">First Name</label>
       <input class="finput" id="mpFirst" value="${profile.first_name}" placeholder="First">
