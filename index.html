@@ -1196,8 +1196,6 @@ if('serviceWorker' in navigator){
 <div style="display:flex;gap:8px"><button class="btn bsec" style="flex:1" onclick="closeModal('mClinician')" type="button">Cancel</button><button class="btn bor" style="flex:1" onclick="saveClinician()" id="clSaveBtn" type="button">Save &amp; Invite</button></div>
 </div></div></div>
 
-<div class="overlay" id="mClinicianDetail"><div class="modal"><div class="mhd"><div class="mtitle">CLINICIAN</div><button class="mclose" onclick="closeModal('mClinicianDetail')" type="button">✕</button></div><div class="mbody" id="mClinicianDetailBody"></div></div></div>
-
 <div class="overlay" id="mImport"><div class="modal"><div class="mhd"><div class="mtitle">IMPORT CAMPERS</div><button class="mclose" onclick="closeModal('mImport')" type="button">✕</button></div><div class="mbody">
 <div class="upload-zone" onclick="document.getElementById('csvFile').click()"><div style="font-family:'Oswald',sans-serif;font-size:14px;letter-spacing:.06em;color:var(--tx2)">Click or drag CSV here</div><div style="font-size:11px;color:var(--tx3);margin-top:4px">Format: First, Last, Email (optional: City, State, Type)</div></div>
 <input type="file" id="csvFile" accept=".csv" style="display:none" onchange="handleCSV(this.files[0])">
@@ -3799,29 +3797,31 @@ function openClinicianDetail(clinicianId){
   const name=cl.name||((cl.first_name||'')+' '+(cl.last_name||''));
   const initials=name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
   const imgHtml=cl.photo
-    ? '<img src="'+cl.photo+'" alt="'+name+'" style="width:96px;height:96px;border-radius:50%;object-fit:cover;border:2px solid var(--orb)" onerror="this.style.display=\'none\'">'
-    : '<div style="width:96px;height:96px;border-radius:50%;background:var(--ord);border:2px solid var(--orb);display:flex;align-items:center;justify-content:center;font-family:\'Oswald\',sans-serif;font-size:34px;color:var(--or)">'+initials+'</div>';
+    ?`<img class="pmod-img" src="${cl.photo}" alt="${name}" onerror="this.outerHTML='<div class=pmod-initials>${initials}</div>'">`
+    :`<div class="pmod-initials">${initials}</div>`;
+  const loc=(cl.city||'')+(cl.state?', '+cl.state:'');
+  const meta=[loc,cl.conference].filter(Boolean).join(' · ');
+  let tags='';
+  if(cl.role)tags+=`<span class="ptag" style="background:var(--ord);border:1px solid var(--orb);color:var(--or)">${cl.role}</span>`;
   const email=(cl.email||'').trim();
   const phone=(cl.phone||'').trim();
   const telHref='tel:'+phone.replace(/[^0-9+]/g,'');
-  const emailRow=email
-    ? '<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--gray2);border:1px solid var(--b2);border-radius:var(--rs);margin-bottom:8px"><span style="font-size:14px">✉️</span><a href="mailto:'+email+'" style="font-size:13px;color:var(--or);text-decoration:none;word-break:break-all">'+email+'</a></div>'
-    : '<div style="font-size:12px;color:var(--tx3);padding:10px 12px;background:var(--gray2);border:1px solid var(--b2);border-radius:var(--rs);margin-bottom:8px">No email on file</div>';
-  const phoneRow=phone
-    ? '<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--gray2);border:1px solid var(--b2);border-radius:var(--rs);margin-bottom:8px"><span style="font-size:14px">📞</span><a href="'+telHref+'" style="font-size:13px;color:var(--or);text-decoration:none">'+phone+'</a></div>'
-    : '';
-  const body=document.getElementById('mClinicianDetailBody');
-  body.innerHTML=
-    '<div style="display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:14px">'+imgHtml+
-    '<div style="font-family:\'Oswald\',sans-serif;font-size:22px;color:var(--white);letter-spacing:.04em;margin-top:10px">'+name+'</div>'+
-    (cl.role?'<div style="font-size:11px;color:var(--or);font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-top:4px">'+cl.role+'</div>':'')+
-    (cl.city?'<div style="font-size:12px;color:var(--tx2);margin-top:4px">📍 '+cl.city+(cl.state?', '+cl.state:'')+'</div>':'')+
-    (cl.conference?'<div style="font-size:11px;color:var(--tx3);margin-top:4px">🏀 '+cl.conference+'</div>':'')+
-    '</div>'+
-    '<div style="font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--tx3);margin-bottom:6px">CONTACT</div>'+
-    emailRow+phoneRow+
-    (cl.bio?'<div style="font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--tx3);margin:14px 0 6px">BIO / RESUME</div><div style="font-size:13px;color:var(--tx);line-height:1.6;background:var(--gray2);border:1px solid var(--b2);border-radius:var(--rs);padding:12px;white-space:pre-wrap">'+cl.bio+'</div>':'');
-  openModal('mClinicianDetail');
+  let body=imgHtml;
+  body+=`<div class="pmod-body" style="padding:16px 16px 0">`;
+  body+=`<div class="pmod-name">${name}</div>`;
+  if(meta)body+=`<div class="pmod-meta">${meta}</div>`;
+  if(tags)body+=`<div class="pmod-tags">${tags}</div>`;
+  if(cl.bio)body+=`<div class="pmod-bio" style="white-space:pre-wrap">${cl.bio}</div>`;
+  else body+='<div style="font-size:13px;color:var(--tx3);padding:10px 0">No bio yet.</div>';
+  body+=`</div>`;
+  body+=`<div style="padding:0 16px 16px"><div class="pmod-sec">Contact</div>`;
+  if(email)body+=`<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--gray2);border:1px solid var(--b2);border-radius:var(--rs);margin-bottom:8px"><span style="font-size:14px">✉️</span><a href="mailto:${email}" style="font-size:13px;color:var(--or);text-decoration:none;word-break:break-all">${email}</a></div>`;
+  else body+=`<div style="font-size:12px;color:var(--tx3);padding:10px 12px;background:var(--gray2);border:1px solid var(--b2);border-radius:var(--rs);margin-bottom:8px">No email on file</div>`;
+  if(phone)body+=`<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--gray2);border:1px solid var(--b2);border-radius:var(--rs);margin-bottom:8px"><span style="font-size:14px">📞</span><a href="${telHref}" style="font-size:13px;color:var(--or);text-decoration:none">${phone}</a></div>`;
+  body+=`</div>`;
+  body+=`<div style="padding:0 16px 40px"><button class="btn bsec" style="width:100%" onclick="closeModal('mProfile')">Close</button></div>`;
+  document.getElementById('pmBody').innerHTML=body;
+  openModal('mProfile');
 }
 
 // ═══════════════════════════════════════════════════════
