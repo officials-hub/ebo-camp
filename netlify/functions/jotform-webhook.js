@@ -14,7 +14,7 @@
  * don't want silent duplication. Errors are logged to Netlify function logs.
  */
 
-const DEFAULT_STATE = 'CO';
+const { extractCamper, insertCamper } = require('./_jotform-shared');
 
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
@@ -38,49 +38,17 @@ exports.handler = async (event) => {
     }
 
     const camper = extractCamper(submission);
+    const result = await insertCamper(camper);
 
-    if (!camper.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(camper.email)) {
-      console.error('[jotform-webhook] invalid email:', camper.email);
-      return ok({ note: 'invalid email' });
-    }
-    if (!camper.first_name || !camper.last_name) {
-      console.error('[jotform-webhook] missing name', { first: camper.first_name, last: camper.last_name });
-      return ok({ note: 'missing name' });
-    }
-
-    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
-      console.error('[jotform-webhook] Supabase env vars not configured');
-      return ok({ note: 'not configured' });
-    }
-
-    // Duplicate check
-    const existsUrl = `${process.env.SUPABASE_URL}/rest/v1/campers?email=eq.${encodeURIComponent(camper.email)}&select=id`;
-    const existsRes = await fetch(existsUrl, { headers: supabaseHeaders() });
-    if (!existsRes.ok) {
-      console.error('[jotform-webhook] duplicate check failed:', existsRes.status, await existsRes.text());
-      return ok({ note: 'dupcheck failed' });
-    }
-    const existing = await existsRes.json();
-    if (Array.isArray(existing) && existing.length > 0) {
+    if (result.status === 'created') {
+      console.log(`[jotform-webhook] created: ${camper.first_name} ${camper.last_name} (${camper.email})`);
+    } else if (result.status === 'duplicate') {
       console.log(`[jotform-webhook] duplicate skipped: ${camper.email}`);
-      return ok({ note: 'duplicate', email: camper.email });
+    } else {
+      console.error(`[jotform-webhook] ${result.status}:`, result.reason || '', result.body || '');
     }
 
-    camper.pin = String(Math.floor(1000 + Math.random() * 9000));
-
-    const insRes = await fetch(`${process.env.SUPABASE_URL}/rest/v1/campers`, {
-      method: 'POST',
-      headers: { ...supabaseHeaders(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-      body: JSON.stringify(camper),
-    });
-    if (!insRes.ok) {
-      console.error('[jotform-webhook] insert failed:', insRes.status, await insRes.text());
-      return ok({ note: 'insert failed' });
-    }
-
-    console.log(`[jotform-webhook] created: ${camper.first_name} ${camper.last_name} (${camper.email})`);
-
-    return ok({ note: 'created', email: camper.email });
+    return ok({ note: result.status, email: camper.email });
   } catch (err) {
     console.error('[jotform-webhook] unexpected error:', err);
     return ok({ note: 'error' });
@@ -93,83 +61,4 @@ function ok(extra) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ok: true, ...extra }),
   };
-}
-
-function supabaseHeaders() {
-  return {
-    apikey: process.env.SUPABASE_ANON_KEY,
-    Authorization: `Bearer ${process.env.SUPABASE_ANON_KEY}`,
-  };
-}
-
-function extractCamper(sub) {
-  const entries = Object.entries(sub);
-  const findByKey = (needle) =>
-    entries.find(([k]) => k.toLowerCase().includes(needle.toLowerCase()));
-
-  // JotForm "Full Name" widget renders as a composite { first, last } object
-  const nameComposite = entries
-    .map(([, v]) => v)
-    .find((v) => v && typeof v === 'object' && !Array.isArray(v) && ('first' in v || 'last' in v));
-
-  const first = (nameComposite?.first || readVal(findByKey('first'))).toString().trim();
-  const last  = (nameComposite?.last  || readVal(findByKey('last'))).toString().trim();
-
-  // JotForm "Phone" widget is typically { full, area, phone }
-  const phoneEntry = entries.find(
-    ([k, v]) => k.toLowerCase().includes('phone') && v && typeof v === 'object' && !Array.isArray(v)
-  );
-  const phoneComposite = phoneEntry?.[1];
-  let phone = '';
-  if (phoneComposite) {
-    if (typeof phoneComposite.full === 'string' && phoneComposite.full.trim()) {
-      phone = phoneComposite.full.trim();
-    } else {
-      phone = `${phoneComposite.area || ''}${phoneComposite.phone || ''}`.trim();
-    }
-  } else {
-    phone = readVal(findByKey('phone')).toString().trim();
-  }
-
-  const email = readVal(findByKey('email')).toString().trim().toLowerCase();
-  const city  = readVal(findByKey('city')).toString().trim();
-  const stateRaw = readVal(findByKey('state')).toString().trim();
-  const state = stateRaw || DEFAULT_STATE;
-
-  const level     = readVal(findByKey('level'));
-  const yrs3      = readVal(findByKey('3 person')) || readVal(findByKey('three person'));
-  const yrs2      = readVal(findByKey('2 person')) || readVal(findByKey('two person'));
-  const area      = readVal(findByKey('area'));
-  const goals     = readVal(findByKey('goals'));
-  const tshirt    = readVal(findByKey('tshirt')) || readVal(findByKey('t-shirt')) || readVal(findByKey('size'));
-  const conflicts = readVal(findByKey('conflict'));
-
-  const bio = buildBio({ level, yrs3, yrs2, area, goals, tshirt, conflicts });
-
-  return { first_name: first, last_name: last, email, phone, city, state, bio };
-}
-
-function readVal(entry) {
-  if (!entry) return '';
-  const v = entry[1];
-  if (v == null) return '';
-  if (Array.isArray(v)) return v.filter(Boolean).join(', ');
-  if (typeof v === 'object') return Object.values(v).filter(Boolean).join(' ');
-  return String(v);
-}
-
-function buildBio(f) {
-  const lines = [];
-  const push = (label, val) => {
-    const s = (val == null ? '' : String(val)).trim();
-    if (s) lines.push(`${label}: ${s}`);
-  };
-  push('Experience Level', f.level);
-  push('Years 3-person', f.yrs3);
-  push('Years 2-person', f.yrs2);
-  push('Area', f.area);
-  push('Goals', f.goals);
-  push('T-shirt Size', f.tshirt);
-  push('Scheduling Conflicts', f.conflicts);
-  return lines.join('\n');
 }

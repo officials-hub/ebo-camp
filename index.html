@@ -813,10 +813,12 @@ if('serviceWorker' in navigator){
 <div class="swrap"><span class="sicon">🔍</span><input class="sinput" type="text" id="acSearch" placeholder="Search..." oninput="renderAdminCampers(this.value)"></div>
 <button class="btn bor bsm" onclick="openAddCamper()" type="button">➕ Add</button>
 <button class="btn bsec bsm" onclick="openModal('mXLSX')" type="button">Excel</button>
+<button class="btn bsec bsm" id="jotformBackfillBtn" onclick="runJotformBackfill()" type="button" title="Pull latest submissions from JotForm and import any not yet in the roster">🔄 JotForm Backfill</button>
 <button class="btn bsec bsm" id="sendAllPinsBtn" onclick="sendAllPins()" type="button">Send All PINs</button>
 <button class="btn bred bsm" onclick="deleteAllCampers()" type="button">Delete All</button>
 </div>
 </div>
+<div id="jotformBackfillStatus" style="font-size:12px;color:var(--tx2);margin-bottom:10px;display:none"></div>
 <div class="twrap"><table><thead><tr><th>#</th><th class="sortable-th" onclick="sortCampers('name')" id="th-name">Name <span class="sort-arrow" id="sa-name">↑</span></th><th class="sortable-th" onclick="sortCampers('city')" id="th-city">City/State <span class="sort-arrow" id="sa-city"></span></th><th>Email</th><th class="sortable-th" onclick="sortCampers('pin')" id="th-pin">PIN <span class="sort-arrow" id="sa-pin"></span></th><th class="sortable-th" onclick="sortCampers('type')" id="th-type">Type <span class="sort-arrow" id="sa-type"></span></th><th class="sortable-th" onclick="sortCampers('evals')" id="th-evals">Evals <span class="sort-arrow" id="sa-evals"></span></th><th class="sortable-th" onclick="sortCampers('avg')" id="th-avg">Avg <span class="sort-arrow" id="sa-avg"></span></th><th></th></tr></thead><tbody id="acbody"></tbody></table></div>
 </div>
 <div class="tc" id="at-staff">
@@ -2402,6 +2404,39 @@ async function resetCamperPin(id){
   }catch(e){
     toast('Error resetting PIN', true);
     if(btn){ btn.disabled = false; btn.textContent = 'Reset PIN'; }
+  }
+}
+
+// Pull every submission from JotForm via the public API and import any not
+// already in the campers table (deduped by email server-side). Idempotent —
+// safe to run as often as needed when the live webhook misses a submission.
+async function runJotformBackfill(){
+  const ok=await cf('Pull all submissions from JotForm and import any new campers? Existing campers (matched by email) are skipped.','Run Backfill','Cancel');
+  if(!ok)return;
+  const btn=document.getElementById('jotformBackfillBtn');
+  const status=document.getElementById('jotformBackfillStatus');
+  if(btn){btn.disabled=true;btn.textContent='⏳ Pulling...';}
+  if(status){status.style.display='block';status.style.color='var(--tx2)';status.textContent='Pulling submissions from JotForm...';}
+  try{
+    const res=await fetch('https://ebo-camp-emails.netlify.app/.netlify/functions/jotform-backfill',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok||!data.ok){
+      const msg=data.error||`HTTP ${res.status}`;
+      if(status){status.style.color='var(--red2)';status.textContent='✕ Backfill failed: '+msg;}
+      toast('Backfill failed: '+msg,true);
+      return;
+    }
+    const summary=`Fetched ${data.fetched}. Created ${data.created}, ${data.duplicates} dupes skipped`+(data.invalid?`, ${data.invalid} invalid`:'')+(data.errors?`, ${data.errors} errors`:'')+'.';
+    if(status){status.style.color=data.errors?'var(--red2)':'var(--grn)';status.textContent='✓ '+summary;}
+    toast(`✓ ${data.created} new camper${data.created===1?'':'s'} imported`);
+    if(data.created>0){await loadAll();renderAdminCampers();updateAdminStats();populateAdminForms();}
+    if(data.errors&&data.details){console.warn('JotForm backfill errors:',data.details.filter(d=>d.result==='error'));}
+  }catch(e){
+    console.error(e);
+    if(status){status.style.color='var(--red2)';status.textContent='✕ Backfill failed: '+(e.message||'network error');}
+    toast('Backfill failed',true);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='🔄 JotForm Backfill';}
   }
 }
 
