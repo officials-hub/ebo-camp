@@ -506,9 +506,9 @@ if('serviceWorker' in navigator){
   <div class="bb-icon"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>
   <span class="bl">My Evals</span>
 </button>
-<button class="bb" id="cb-profiles" onclick="cView('profiles')" type="button">
-  <div class="bb-icon"><svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="3"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/><circle cx="17" cy="7" r="3"/><path d="M21 21v-2a4 4 0 00-3-3.87"/></svg></div>
-  <span class="bl">Roster</span>
+<button class="bb" id="cb-schedule" onclick="cView('schedule')" type="button">
+  <div class="bb-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
+  <span class="bl">Schedule</span>
 </button>
 <button class="bb" id="cb-chat" onclick="cView('chat')" type="button">
   <div class="bb-icon" style="position:relative"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span class="badge-dot" id="chatDotC" style="top:0;right:0"></span></div>
@@ -524,9 +524,9 @@ if('serviceWorker' in navigator){
 <div class="more-drawer" id="moreDrawerC">
   <div class="more-drawer-handle"></div>
   <div class="more-drawer-grid">
-    <button class="more-item" id="cb-schedule" onclick="cView('schedule');closeMoreC()" type="button">
-      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-      <span>Schedule</span>
+    <button class="more-item" id="cb-profiles" onclick="cView('profiles');closeMoreC()" type="button">
+      <svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="3"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/><circle cx="17" cy="7" r="3"/><path d="M21 21v-2a4 4 0 00-3-3.87"/></svg>
+      <span>Roster</span>
     </button>
     <button class="more-item" id="cb-myprofile" onclick="cView('myprofile');closeMoreC()" type="button">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
@@ -614,17 +614,13 @@ if('serviceWorker' in navigator){
   <div class="bb-icon"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>
   <span class="bl">My Evals</span>
 </button>
-<button class="bb" id="sb-roster" onclick="sView('roster')" type="button">
-  <div class="bb-icon"><svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="3"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/><circle cx="17" cy="7" r="3"/><path d="M21 21v-2a4 4 0 00-3-3.87"/></svg></div>
-  <span class="bl">Roster</span>
+<button class="bb" id="sb-schedule" onclick="sView('schedule')" type="button">
+  <div class="bb-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
+  <span class="bl">Schedule</span>
 </button>
 <button class="bb" id="sb-chat" onclick="sView('chat')" type="button">
-  <div class="bb-icon" style="position:relative"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span class="badge-dot" id="chatDotS" style="top:0;right:0"></span></div>
+  <div class="bb-icon" style="position:relative"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span class="badge-dot" id="chatDotS" style="top:0;right:0"></span><span class="badge-dot" id="chatDotSR" style="top:0;right:10px;background:#e05a00"></span></div>
   <span class="bl">Chat</span>
-</button>
-<button class="bb" id="sb-staffchat" onclick="sView('staffchat')" type="button">
-  <div class="bb-icon" style="position:relative"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="badge-dot" id="chatDotSR" style="top:0;right:0"></span></div>
-  <span class="bl">Staff Chat</span>
 </button>
 <button class="bb" id="sb-more-btn" onclick="openMoreS()" type="button">
   <div class="bb-icon"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg></div>
@@ -636,9 +632,9 @@ if('serviceWorker' in navigator){
 <div class="more-drawer" id="moreDrawerS">
   <div class="more-drawer-handle"></div>
   <div class="more-drawer-grid">
-    <button class="more-item" id="sb-schedule" onclick="sView('schedule');closeMoreS()" type="button">
-      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-      <span>Schedule</span>
+    <button class="more-item" id="sb-roster" onclick="sView('roster');closeMoreS()" type="button">
+      <svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="3"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/><circle cx="17" cy="7" r="3"/><path d="M21 21v-2a4 4 0 00-3-3.87"/></svg>
+      <span>Roster</span>
     </button>
     <button class="more-item" id="sb-myprofile" onclick="sView('myprofile');closeMoreS()" type="button">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
@@ -712,25 +708,23 @@ if('serviceWorker' in navigator){
 <div id="sMyProfileCon"></div>
 </div>
 <div class="view" id="sv-chat">
-<div class="stitle" style="margin-bottom:8px">CAMP <span>CHAT</span></div>
-<div style="font-size:11px;color:var(--tx3);margin-bottom:10px">Visible to everyone — campers, staff, and admin</div>
-<div class="chat-wrap" style="height:calc(100dvh - 200px)">
+<div style="display:flex;gap:0;margin-bottom:10px;border:1px solid var(--b2);border-radius:var(--r);overflow:hidden">
+  <button id="staffChatTab-general" onclick="switchStaffChatRoom('general')" style="flex:1;padding:10px;background:var(--or);color:#fff;border:none;font-family:'Oswald',sans-serif;font-size:13px;font-weight:700;letter-spacing:.06em;cursor:pointer">CAMP CHAT</button>
+  <button id="staffChatTab-staff" onclick="switchStaffChatRoom('staff')" style="flex:1;padding:10px;background:var(--gray2);color:var(--tx2);border:none;border-left:1px solid var(--b2);font-family:'Oswald',sans-serif;font-size:13px;font-weight:700;letter-spacing:.06em;cursor:pointer">STAFF ROOM 🔒</button>
+</div>
+<div id="staffChatRoomLabel" style="font-size:11px;color:var(--tx3);margin-bottom:10px">Visible to everyone — campers, staff, and admin</div>
+<div id="sv-chat-general" class="chat-wrap" style="height:calc(100dvh - 220px)">
 <div class="chat-messages" id="chatMsgsStaff"></div>
 <div class="chat-input-row">
 <textarea class="chat-input" id="chatInputStaff" placeholder="Message the camp..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat('staff');}"></textarea>
 <button class="chat-send" onclick="sendChat('staff')">➤</button>
 </div>
 </div>
-</div>
-<div class="view" id="sv-staffchat">
-<div class="stitle" style="margin-bottom:8px">STAFF <span>ROOM</span></div>
-<div style="font-size:11px;color:var(--tx3);margin-bottom:10px">🔒 Staff &amp; clinicians only — campers cannot see this</div>
-<div class="chat-wrap" style="height:calc(100dvh - 200px)">
+<div id="sv-chat-staff" class="chat-wrap" style="height:calc(100dvh - 220px);display:none">
 <div class="chat-messages" id="chatMsgsStaffRoom"></div>
 <div class="chat-input-row">
 <textarea class="chat-input" id="chatInputStaffRoom" placeholder="Message staff only..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat('staffroom');}"></textarea>
 <button class="chat-send" onclick="sendChat('staffroom')" style="background:#e05a00">➤</button>
-</div>
 </div>
 </div>
 </div>
@@ -1390,7 +1384,7 @@ function cView(v){
   document.getElementById('cv-'+v).classList.add('on');
   const btn=document.getElementById('cb-'+v);if(btn)btn.classList.add('on');
   // Highlight More btn for drawer items
-  const drawerViews=['schedule','myprofile','campinfo'];
+  const drawerViews=['profiles','myprofile','campinfo','clinicians'];
   if(drawerViews.includes(v)){const mb=document.getElementById('cb-more-btn');if(mb)mb.classList.add('on');}
   if(v==='home')renderCamperHome();
   if(v==='myevals')renderCamperMyEvals();
@@ -1443,23 +1437,44 @@ function renderCamperMyEvals(){
 
 // ═══ STAFF PORTAL ═══
 function sView(v){
-  if(v!=='chat'&&v!=='staffchat')chatActiveSuffix=null;
+  // Backwards compatibility: any caller asking for 'staffchat' now lands on 'chat' with the staff tab selected.
+  let openStaffRoomTab=false;
+  if(v==='staffchat'){v='chat';openStaffRoomTab=true;}
+  if(v!=='chat')chatActiveSuffix=null;
   document.querySelectorAll('#pStaff .view').forEach(el=>el.classList.remove('on'));
   document.querySelectorAll('#navS .bb').forEach(b=>b.classList.remove('on'));
   document.getElementById('sv-'+v).classList.add('on');
   const btn=document.getElementById('sb-'+v);if(btn)btn.classList.add('on');
   // Highlight More btn for drawer items
-  const drawerViewsS=['schedule','myprofile','campinfo','staffchat'];
+  const drawerViewsS=['roster','myprofile','campinfo','clinicians'];
   if(drawerViewsS.includes(v)){const mb=document.getElementById('sb-more-btn');if(mb)mb.classList.add('on');}
   if(v==='evaluate')populateStaffEvalForm();
   if(v==='history')renderStaffHistory();
   if(v==='roster')renderStaffRoster('');
-  if(v==='chat'){markChatRead();renderChat('Staff');}
-  if(v==='staffchat'){markChatRead();renderChat('StaffRoom');}
+  if(v==='chat'){switchStaffChatRoom(openStaffRoomTab?'staff':(_staffChatRoom||'general'));}
   if(v==='campinfo')renderCampInfoViewer('sv');
   if(v==='schedule')renderClinicianSchedule();
   if(v==='myprofile')renderMyProfile('staff');
   if(v==='clinicians')renderCliniciansPage('svClinicianGrid');
+}
+
+// Tab switcher for the combined staff chat view
+let _staffChatRoom='general';
+function switchStaffChatRoom(room){
+  _staffChatRoom=room;
+  const isStaff=room==='staff';
+  const tabG=document.getElementById('staffChatTab-general');
+  const tabS=document.getElementById('staffChatTab-staff');
+  const paneG=document.getElementById('sv-chat-general');
+  const paneS=document.getElementById('sv-chat-staff');
+  const lbl=document.getElementById('staffChatRoomLabel');
+  if(tabG){tabG.style.background=isStaff?'var(--gray2)':'var(--or)';tabG.style.color=isStaff?'var(--tx2)':'#fff';}
+  if(tabS){tabS.style.background=isStaff?'var(--or)':'var(--gray2)';tabS.style.color=isStaff?'#fff':'var(--tx2)';}
+  if(paneG)paneG.style.display=isStaff?'none':'flex';
+  if(paneS)paneS.style.display=isStaff?'flex':'none';
+  if(lbl)lbl.textContent=isStaff?'🔒 Staff & clinicians only — campers cannot see this':'Visible to everyone — campers, staff, and admin';
+  markChatRead();
+  renderChat(isStaff?'StaffRoom':'Staff');
 }
 function populateStaffEvalForm(){
   const s=document.getElementById('seCamper');
