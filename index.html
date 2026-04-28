@@ -885,11 +885,10 @@ if('serviceWorker' in navigator){
 <div class="tc" id="at-schedule">
 <div class="stitle" style="margin-bottom:14px">SCHEDULE <span>BUILDER</span></div>
 
-<!-- Publish bar -->
+<!-- Action bar -->
 <div class="sch-publish-bar">
   <div style="display:flex;align-items:center;gap:10px">
-    <span style="font-size:13px;font-weight:600;color:var(--tx)">Schedule Status:</span>
-    <span class="sch-published-badge off" id="schPublishBadge">UNPUBLISHED</span>
+    <span style="font-size:12px;color:var(--tx3)">Games are visible to campers and clinicians as soon as they're saved.</span>
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
     <button class="btn bor bsm" onclick="generateSchedule()" id="schGenBtn" type="button">Generate Schedule</button>
@@ -897,7 +896,6 @@ if('serviceWorker' in navigator){
     <button class="btn bsec bsm" onclick="document.getElementById('schCSVInput').click()" type="button">Upload</button>
     <input type="file" id="schCSVInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="uploadScheduleCSV(this)">
     <button class="btn bsec bsm" onclick="downloadScheduleTemplate()" type="button">Download Template</button>
-    <button class="btn bsec bsm" onclick="toggleSchedulePublish()" id="schPublishBtn" type="button">Publish</button>
     <button class="btn bred bsm" onclick="clearSchedule()" type="button">Clear All</button>
   </div>
 </div>
@@ -3879,15 +3877,12 @@ const COURTS = ['Court 1','Court 2','Court 3','Court 4','Court 5','Court 6'];
 const PLACEHOLDER_CLINICIANS = ['Clinician 1','Clinician 2','Clinician 3','Clinician 4','Clinician 5','Clinician 6'];
 
 let scheduleData = [];      // loaded from Supabase
-let schedulePublished = false;
 let currentAdminDay = 'fri';
 
 // ── LOAD SCHEDULE ────────────────────────────────────────
 async function loadSchedule() {
   try {
     scheduleData = await supa('schedule','GET',null,'?select=*&order=day,time_slot,court') || [];
-    const s = await supa('schedule_settings','GET',null,'?id=eq.1&select=published');
-    schedulePublished = s?.[0]?.published || false;
   } catch(e) { scheduleData = []; }
 }
 
@@ -4213,22 +4208,6 @@ function updateAllFlags() {
   }
 }
 
-// ── TOGGLE PUBLISH ───────────────────────────────────────
-async function toggleSchedulePublish() {
-  const newState = !schedulePublished;
-  try {
-    await supa('schedule_settings','PATCH',{ published: newState },'?id=eq.1');
-    {
-    schedulePublished = newState;
-    const badge = document.getElementById('schPublishBadge');
-    const btn = document.getElementById('schPublishBtn');
-    if (badge) { badge.textContent = newState ? 'PUBLISHED' : 'UNPUBLISHED'; badge.className = 'sch-published-badge ' + (newState ? 'on' : 'off'); }
-    if (btn) btn.textContent = newState ? 'Unpublish' : 'Publish';
-    toast(newState ? 'Schedule published!' : 'Schedule unpublished');
-    }
-  } catch(e) { toast('Error: '+e.message, true); }
-}
-
 // ── CLEAR ALL ────────────────────────────────────────────
 async function clearSchedule() {
   const ok = await cf('Clear all schedule data? This cannot be undone.', 'Clear All', 'Cancel');
@@ -4243,11 +4222,6 @@ async function clearSchedule() {
 function renderCamperSchedule() {
   const el = document.getElementById('cvSchContent');
   if (!el) return;
-
-  if (!schedulePublished) {
-    el.innerHTML = '<div class="schedule-empty"><div class="schedule-empty-txt">Schedule Coming Soon</div><div class="schedule-empty-sub">Your schedule will appear here once published by the director.</div></div>';
-    return;
-  }
 
   const mySlots = scheduleData.filter(s =>
     s.camper_1_id === CU.id || s.camper_2_id === CU.id || s.camper_3_id === CU.id || s.camper_4_id === CU.id
@@ -4304,11 +4278,6 @@ function renderCamperSchedule() {
 function renderClinicianSchedule() {
   const el = document.getElementById('svSchContent');
   if (!el) return;
-
-  if (!schedulePublished) {
-    el.innerHTML = '<div class="schedule-empty"><div class="schedule-empty-txt">Schedule Coming Soon</div><div class="schedule-empty-sub">Your schedule will appear here once published.</div></div>';
-    return;
-  }
 
   // Match clinician by name since staff table ID != clinicians table ID
   const cuName = ((CU.first_name||'') + ' ' + (CU.last_name||'')).toLowerCase().trim();
@@ -4740,12 +4709,6 @@ async function saveGeneratedSchedule() {
     document.getElementById('mGenSch').style.display = 'none';
     await loadSchedule();
     renderAdminSchedule();
-
-    // Update publish badge
-    const badge = document.getElementById('schPublishBadge');
-    const pubBtn = document.getElementById('schPublishBtn');
-    if (badge) { badge.textContent = 'UNPUBLISHED'; badge.className = 'sch-published-badge off'; }
-    if (pubBtn) pubBtn.textContent = 'Publish';
 
   } catch(e) {
     toast('Save error: '+e.message, true);
