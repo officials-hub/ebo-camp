@@ -834,6 +834,7 @@ if('serviceWorker' in navigator){
 <button class="btn bred bsm" onclick="deleteAllClinicians()" type="button">Del All</button>
 </div>
 </div>
+<div style="margin-bottom:10px"><div class="swrap" style="width:100%"><span class="sicon">🔍</span><input class="sinput" style="width:100%" type="text" id="aclSearch" placeholder="Search clinicians..." oninput="renderAdminClinicians(this.value)"></div></div>
 <div class="twrap"><table><thead><tr><th>#</th><th>Name</th><th></th></tr></thead><tbody id="aclbody"></tbody></table></div>
 </div>
 <div class="tc" id="at-evaluate">
@@ -1898,11 +1899,16 @@ async function saveStaffMember(){
 async function delStaff(id){const ok=await cf('Remove this staff member?','Remove','Cancel');if(!ok)return;try{await supa('staff','DELETE',null,`?id=eq.${id}`);toast('Removed');await loadAll();renderAdminStaff();updateAdminStats();}catch(e){toast('Error',true);}}
 
 // ═══ ADMIN CLINICIANS ═══
-function renderAdminClinicians(){
+function renderAdminClinicians(filter){
   const tbody=document.getElementById('aclbody');
+  if(filter===undefined)filter=document.getElementById('aclSearch')?.value||'';
+  const q=(filter||'').toLowerCase().trim();
+  let list=[...clinicians];
+  if(q)list=list.filter(c=>((c.name||'')+' '+(c.email||'')+' '+(c.city||'')+' '+(c.conference||'')).toLowerCase().includes(q));
   if(!clinicians.length){tbody.innerHTML='<tr><td colspan="3"><div class="empty"><span class="ei">🏁</span><div class="et">No Clinicians Yet</div></div></td></tr>';return;}
+  if(!list.length){tbody.innerHTML='<tr><td colspan="3"><div class="empty"><span class="ei">🔍</span><div class="et">No clinicians match "'+q+'"</div></div></td></tr>';return;}
   tbody.innerHTML='';
-  clinicians.forEach((c,i)=>{const tr=document.createElement('tr');tr.innerHTML=`<td class="tdr">${i+1}</td><td class="tdm"><span style="cursor:pointer;color:var(--or);text-decoration:underline" onclick="viewClinicianRankings('${c.name}')">${c.name}</span></td><td style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn bsec bsm" title="Email login info to this clinician" onclick="resendClinicianLogin('${c.id}')">Email</button><button class="btn bsec bsm" onclick="openEditClinician('${c.id}')">Edit</button><button class="btn bred bsm" onclick="delClinician('${c.id}')">Del</button></td>`;tbody.appendChild(tr);});
+  list.forEach((c,i)=>{const tr=document.createElement('tr');tr.innerHTML=`<td class="tdr">${i+1}</td><td class="tdm"><span style="cursor:pointer;color:var(--or);text-decoration:underline" onclick="viewClinicianRankings('${c.name}')">${c.name}</span></td><td style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn bsec bsm" title="Email login info to this clinician" onclick="resendClinicianLogin('${c.id}')">Email</button><button class="btn bsec bsm" onclick="openEditClinician('${c.id}')">Edit</button><button class="btn bred bsm" onclick="delClinician('${c.id}')">Del</button></td>`;tbody.appendChild(tr);});
 }
 let _editClinicianId=null;
 let _editStaffId=null;
