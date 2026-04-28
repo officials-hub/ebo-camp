@@ -4279,12 +4279,11 @@ function renderClinicianSchedule() {
   const el = document.getElementById('svSchContent');
   if (!el) return;
 
-  // Match clinician by name since staff table ID != clinicians table ID
-  const cuName = ((CU.first_name||'') + ' ' + (CU.last_name||'')).toLowerCase().trim();
-  const matchedClin = clinicians.find(c => {
-    const cn = (c.name || (c.first_name||'') + ' ' + (c.last_name||'')).toLowerCase().trim();
-    return cn === cuName || cn.includes(cuName) || cuName.includes(cn.split(' ')[0]);
-  });
+  // Match clinician by exact normalized name since staff.id != clinicians.id.
+  // The earlier loose first-name-substring fallback caused false matches like
+  // "John Gleason" matching "Johnny Basketball" because of the alphabetical
+  // sort order in find().
+  const matchedClin = findMatchingClinician();
   const clinId = matchedClin?.id || CU.id;
   const mySlots = scheduleData.filter(s => s.clinician_id === clinId)
     .sort((a,b) => {
