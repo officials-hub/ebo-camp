@@ -2851,7 +2851,8 @@ async function sendEmailBlast(){
     recipients = [...recipients, ...campers.filter(c=>c.email).map(c=>({email:c.email, name:c.first_name+' '+c.last_name}))];
   }
   if(recipientType === 'staff' || recipientType === 'everyone'){
-    recipients = [...recipients, ...staffList.filter(s=>s.email).map(s=>({email:s.email, name:(s.first_name||'')+' '+(s.last_name||s.name||'')}))];
+    // Staff emails live on the clinicians table (the staff table has no email column).
+    recipients = [...recipients, ...clinicians.filter(c=>c.email).map(c=>({email:c.email, name:c.name||((c.first_name||'')+' '+(c.last_name||''))}))];
   }
   // Deduplicate by email
   const seen = new Set();
