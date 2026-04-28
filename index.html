@@ -72,7 +72,7 @@ body::before{content:'';display:none}
 
 /* APP SHELL */
 #app{display:none;flex-direction:column;height:100dvh;position:relative;z-index:1}
-.topnav{background:rgba(255,255,255,.97);backdrop-filter:blur(10px);border-bottom:3px solid transparent;border-bottom:3px solid var(--or);padding:11px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 1px 8px rgba(0,0,0,.08);gap:8px}
+.topnav{background:rgba(255,255,255,.97);backdrop-filter:blur(10px);border-bottom:3px solid transparent;border-bottom:3px solid var(--or);padding:calc(11px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-right,0px)) 11px calc(16px + env(safe-area-inset-left,0px));display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 1px 8px rgba(0,0,0,.08);gap:8px}
 .nbrand{display:flex;align-items:center;gap:10px;flex-shrink:0;min-width:0}
 .nright{display:flex;align-items:center;gap:8px;flex-shrink:1;min-width:0;justify-content:flex-end}
 .nlogo{width:34px;height:34px;border-radius:50%;border:2px solid var(--or);object-fit:cover;flex-shrink:0}
