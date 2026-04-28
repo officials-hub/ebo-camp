@@ -6,6 +6,9 @@
   "scripts": {
     "import": "node scripts/import-existing.js"
   },
+  "dependencies": {
+    "web-push": "^3.6.7"
+  },
   "devDependencies": {
     "dotenv": "^16.4.5",
     "xlsx": "^0.18.5"
