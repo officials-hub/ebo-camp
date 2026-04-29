@@ -1303,6 +1303,7 @@ async function enableNotifications(){
 <label class="flabel" style="margin-top:10px">Camper 4</label><select class="finput" id="agCamper4"></select>
 <label class="flabel" style="margin-top:10px">Camper 5</label><select class="finput" id="agCamper5"></select>
 <label class="flabel" style="margin-top:10px">Clinician</label><select class="finput" id="agClinician"></select>
+<label class="flabel" style="margin-top:10px">Clinician 2 (optional)</label><select class="finput" id="agClinician2"></select>
 <div id="agErr" style="display:none;background:#fee;color:#c00;padding:8px;border-radius:6px;font-size:12px;margin-top:10px"></div>
 <div style="display:flex;gap:8px;margin-top:14px"><button class="btn bsec" style="flex:1" onclick="closeModal('mAddGame')" type="button">Cancel</button><button class="btn bor" style="flex:1" onclick="saveAddGame()" id="agSaveBtn" type="button">Save Game</button></div>
 </div></div></div>
@@ -1556,6 +1557,7 @@ async function renderCamperMyEvals(){
   const myE=evaluations.filter(e=>e.camper_id===CU.id).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
   if(!myE.length){con.innerHTML='<div class="empty"><span class="ei">📋</span><div class="et">No Evaluations Yet</div><div style="font-size:12px;color:var(--tx3);margin-top:6px">Your evaluations will appear here as clinicians submit them.</div></div>';return;}
   // Privacy: only fetch crew notes for slots this camper played in.
+  // Multiple clinicians per game means multiple crew notes possible per slot.
   const crewBySlot = {};
   try{
     const slotPairs = [...new Set(myE.map(e => `${e.eval_date}|${e.court}|${e.eval_time}`).filter(k => k && k!=='||'))];
@@ -1563,8 +1565,8 @@ async function renderCamperMyEvals(){
       const [d,c,t] = k.split('|');
       if (!d) return;
       const rows = await supa('crew_notes','GET',null,
-        `?select=note,status,eval_date,court,eval_time&eval_date=eq.${d}&court=eq.${encodeURIComponent(c)}&eval_time=eq.${encodeURIComponent(t)}&status=eq.submitted`);
-      if (Array.isArray(rows) && rows[0]) crewBySlot[k] = rows[0];
+        `?select=note,status,clinician_name,eval_date,court,eval_time&eval_date=eq.${d}&court=eq.${encodeURIComponent(c)}&eval_time=eq.${encodeURIComponent(t)}&status=eq.submitted`);
+      if (Array.isArray(rows) && rows.length) crewBySlot[k] = rows.filter(r => r.note && r.note.trim());
     }));
   }catch(err){}
   con.innerHTML=myE.map(e=>{
@@ -1592,8 +1594,8 @@ async function renderCamperMyEvals(){
       <div style="background:var(--gray2);border-radius:var(--rs);padding:10px 12px;margin-bottom:${e.comments?'10px':'0'}">
         ${scoresHtml||'<div style="font-size:12px;color:var(--tx3)">No scores recorded.</div>'}
       </div>
-      ${e.comments?`<div style="font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--tx3);margin-bottom:4px">CLINICIAN COMMENTS</div><div style="font-size:13px;color:var(--tx);line-height:1.6;background:var(--gray2);border-radius:var(--rs);padding:10px 12px;white-space:pre-wrap;margin-bottom:${crewBySlot[`${e.eval_date}|${e.court}|${e.eval_time}`]?'10px':'0'}">${e.comments}</div>`:''}
-      ${(()=>{const cn=crewBySlot[`${e.eval_date}|${e.court}|${e.eval_time}`];return cn&&cn.note?`<div style="font-size:10px;font-weight:700;letter-spacing:.12em;color:#8a5a00;margin-bottom:4px">CREW FEEDBACK · APPLIES TO WHOLE CREW</div><div style="font-size:13px;color:var(--tx);line-height:1.6;background:#fff7ec;border:1px solid #f0d9a8;border-radius:var(--rs);padding:10px 12px;white-space:pre-wrap">${cn.note}</div>`:'';})()}
+      ${e.comments?`<div style="font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--tx3);margin-bottom:4px">CLINICIAN COMMENTS</div><div style="font-size:13px;color:var(--tx);line-height:1.6;background:var(--gray2);border-radius:var(--rs);padding:10px 12px;white-space:pre-wrap;margin-bottom:${(crewBySlot[`${e.eval_date}|${e.court}|${e.eval_time}`]||[]).length?'10px':'0'}">${e.comments}</div>`:''}
+      ${(()=>{const arr=crewBySlot[`${e.eval_date}|${e.court}|${e.eval_time}`]||[];return arr.map(cn=>`<div style="font-size:10px;font-weight:700;letter-spacing:.12em;color:#8a5a00;margin-bottom:4px">CREW FEEDBACK${cn.clinician_name?' · '+cn.clinician_name.toUpperCase():''}</div><div style="font-size:13px;color:var(--tx);line-height:1.6;background:#fff7ec;border:1px solid #f0d9a8;border-radius:var(--rs);padding:10px 12px;white-space:pre-wrap;margin-bottom:8px">${cn.note}</div>`).join('');})()}
     </div>`;
   }).join('');
 }
@@ -1771,7 +1773,7 @@ async function emailEvalToCamper(camperId,statusEl){
   }
   if(statusEl)statusEl.innerHTML+='<div class="email-pend">Sending email...</div>';
   const camperEvals=evaluations.filter(e=>e.camper_id===camperId);
-  // Pull crew notes for any of this camper's slots (one round-trip OR per-slot)
+  // Pull crew notes for any of this camper's slots — array per slot (one entry per clinician)
   const crewBySlot = {};
   try {
     const slotPairs = [...new Set(camperEvals.map(e => `${e.eval_date}|${e.court}|${e.eval_time}`).filter(k => k!=='||'))];
@@ -1779,8 +1781,8 @@ async function emailEvalToCamper(camperId,statusEl){
       const [d,c,t] = k.split('|');
       if (!d) continue;
       const rows = await supa('crew_notes','GET',null,
-        `?select=note,status,eval_date,court,eval_time&eval_date=eq.${d}&court=eq.${encodeURIComponent(c)}&eval_time=eq.${encodeURIComponent(t)}&status=eq.submitted`);
-      if (Array.isArray(rows) && rows[0]) crewBySlot[k] = rows[0];
+        `?select=note,status,clinician_name,eval_date,court,eval_time&eval_date=eq.${d}&court=eq.${encodeURIComponent(c)}&eval_time=eq.${encodeURIComponent(t)}&status=eq.submitted`);
+      if (Array.isArray(rows) && rows.length) crewBySlot[k] = rows.filter(r => r.note && r.note.trim());
     }
   } catch(e){}
   try{
@@ -1888,7 +1890,7 @@ function renderLiveEvalGameList(){
     return;
   }
   const myGames = scheduleData
-    .filter(s => String(s.clinician_id)===String(matched.id))
+    .filter(s => String(s.clinician_id)===String(matched.id) || String(s.clinician_2_id)===String(matched.id))
     .sort((a,b)=>{
       const dayOrder=['Friday May 1, 2026','Saturday May 2, 2026','Sunday May 3, 2026'];
       const d=dayOrder.indexOf(a.day)-dayOrder.indexOf(b.day);
@@ -1936,7 +1938,7 @@ async function openLiveEvalGame(idx){
   } catch(e){}
   try {
     const crews = await supa('crew_notes','GET',null,
-      `?select=*&eval_date=eq.${date}&court=eq.${encodeURIComponent(g.court)}&eval_time=eq.${encodeURIComponent(g.time_slot)}`);
+      `?select=*&clinician_name=eq.${encodeURIComponent(matched.name)}&eval_date=eq.${date}&court=eq.${encodeURIComponent(g.court)}&eval_time=eq.${encodeURIComponent(g.time_slot)}`);
     if (Array.isArray(crews) && crews.length) _liveEval.crew = { id:crews[0].id, note:crews[0].note||'', status:crews[0].status||'in_progress' };
   } catch(e){}
   // Determine submitted state — true if every camper's eval has status='submitted'
@@ -2164,7 +2166,7 @@ async function liveEvalSaveCrewNote(){
         if (row?.id) _liveEval.crew.id = row.id;
       }catch(insErr){
         await supa('crew_notes','PATCH', payload,
-          `?eval_date=eq.${g.date}&court=eq.${encodeURIComponent(g.court)}&eval_time=eq.${encodeURIComponent(g.time)}`);
+          `?clinician_name=eq.${encodeURIComponent(g.clinicianName)}&eval_date=eq.${g.date}&court=eq.${encodeURIComponent(g.court)}&eval_time=eq.${encodeURIComponent(g.time)}`);
       }
     }
     _liveEval.lastSavedAt = Date.now();
@@ -2246,8 +2248,9 @@ function buildEmailHTML(camper,evals,crewBySlot){
   const ov=evals.map(e=>e.overall_score).filter(v=>v!=null);const overall=ov.length?(ov.reduce((a,b)=>a+b,0)/ov.length).toFixed(1):'N/A';
   const evalDetails=evals.map(ev=>{
     const meta=[];if(ev.clinician_name)meta.push(ev.clinician_name);if(ev.eval_date)meta.push(ev.eval_date);if(ev.court)meta.push('Court '+ev.court);if(ev.eval_time)meta.push(ev.eval_time);
-    const crew = crewBySlot[slotKey(ev.eval_date, ev.court, ev.eval_time)];
-    const crewBlock = crew && crew.note ? `<div style="margin-top:8px;padding:10px 12px;background:#fff7ec;border:1px solid #f0d9a8;border-radius:6px;"><div style="font-size:10px;font-weight:700;letter-spacing:.12em;color:#8a5a00;text-transform:uppercase;margin-bottom:4px;">Crew Feedback · applies to whole crew</div><div style="color:#333333;font-size:13px;line-height:1.5;">${crew.note}</div></div>` : '';
+    const crews = crewBySlot[slotKey(ev.eval_date, ev.court, ev.eval_time)];
+    const crewArr = Array.isArray(crews) ? crews.filter(x => x && x.note && x.note.trim()) : (crews && crews.note ? [crews] : []);
+    const crewBlock = crewArr.length ? crewArr.map(crew => `<div style="margin-top:8px;padding:10px 12px;background:#fff7ec;border:1px solid #f0d9a8;border-radius:6px;"><div style="font-size:10px;font-weight:700;letter-spacing:.12em;color:#8a5a00;text-transform:uppercase;margin-bottom:4px;">Crew Feedback${crew.clinician_name?' · '+crew.clinician_name:''}</div><div style="color:#333333;font-size:13px;line-height:1.5;">${crew.note}</div></div>`).join('') : '';
     return`<div style="background:#f7f5f2;border:1px solid #e5e1da;border-radius:8px;padding:12px 14px;margin-bottom:8px;border-left:4px solid #000000;"><div style="font-size:12px;color:#000000;margin-bottom:6px;font-weight:700;letter-spacing:.04em;">${meta.join(' · ')}</div>${ev.comments?`<div style="color:#333333;font-size:13px;line-height:1.5;">${ev.comments}</div>`:''}${crewBlock}</div>`;
   }).join('');
   const evalDetailsBlock=evalDetails?`<div style="margin-top:18px;"><div style="font-size:11px;font-weight:700;letter-spacing:.12em;color:#666666;text-transform:uppercase;margin-bottom:8px;">Evaluation Notes</div>${evalDetails}</div>`:'';
@@ -4344,10 +4347,12 @@ function renderDailyView(){
       const c4 = campers.find(x=>x.id===s.camper_4_id);
       const c5 = campers.find(x=>x.id===s.camper_5_id);
       const cl = clinicians.find(x=>x.id===s.clinician_id);
-      const clName = cl ? (cl.name||cl.first_name+' '+cl.last_name) : '—';
+      const cl2obj = clinicians.find(x=>x.id===s.clinician_2_id);
+      const clNames = [cl?.name||(cl?cl.first_name+' '+cl.last_name:''), cl2obj?.name||(cl2obj?cl2obj.first_name+' '+cl2obj.last_name:'')].filter(Boolean);
+      const clName = clNames.length ? clNames.join(' & ') : '—';
       const evals1 = c1 ? evaluations.filter(e=>e.camper_id===c1.id).length : 0;
       const evals2 = c2 ? evaluations.filter(e=>e.camper_id===c2.id).length : 0;
-      html += '<div style="background:var(--gray);border:1px solid var(--b2);border-radius:var(--r);padding:10px"><div style="font-family:\'Oswald\',sans-serif;font-size:16px;color:var(--or);margin-bottom:6px">'+s.court+'</div>'+(c1?'<div style="font-size:12px;color:var(--tx);font-weight:600;display:flex;justify-content:space-between">'+c1.first_name+' '+c1.last_name+'<span style="font-size:10px;color:var(--tx3)">'+evals1+' eval'+(evals1!==1?'s':'')+'</span></div>':'')+(c2?'<div style="font-size:12px;color:var(--tx);font-weight:600;display:flex;justify-content:space-between">'+c2.first_name+' '+c2.last_name+'<span style="font-size:10px;color:var(--tx3)">'+evals2+' eval'+(evals2!==1?'s':'')+'</span></div>':'')+(c3?'<div style="font-size:12px;color:var(--tx3)">'+c3.first_name+' '+c3.last_name+'</div>':'')+(c4?'<div style="font-size:12px;color:var(--tx3)">'+c4.first_name+' '+c4.last_name+'</div>':'')+(c5?'<div style="font-size:12px;color:var(--tx3)">'+c5.first_name+' '+c5.last_name+'</div>':'')+'<div style="font-size:10px;color:var(--tx3);margin-top:6px;padding-top:6px;border-top:1px solid var(--b2)">Clinician: '+clName+'</div></div>';
+      html += '<div style="background:var(--gray);border:1px solid var(--b2);border-radius:var(--r);padding:10px"><div style="font-family:\'Oswald\',sans-serif;font-size:16px;color:var(--or);margin-bottom:6px">'+s.court+'</div>'+(c1?'<div style="font-size:12px;color:var(--tx);font-weight:600;display:flex;justify-content:space-between">'+c1.first_name+' '+c1.last_name+'<span style="font-size:10px;color:var(--tx3)">'+evals1+' eval'+(evals1!==1?'s':'')+'</span></div>':'')+(c2?'<div style="font-size:12px;color:var(--tx);font-weight:600;display:flex;justify-content:space-between">'+c2.first_name+' '+c2.last_name+'<span style="font-size:10px;color:var(--tx3)">'+evals2+' eval'+(evals2!==1?'s':'')+'</span></div>':'')+(c3?'<div style="font-size:12px;color:var(--tx3)">'+c3.first_name+' '+c3.last_name+'</div>':'')+(c4?'<div style="font-size:12px;color:var(--tx3)">'+c4.first_name+' '+c4.last_name+'</div>':'')+(c5?'<div style="font-size:12px;color:var(--tx3)">'+c5.first_name+' '+c5.last_name+'</div>':'')+'<div style="font-size:10px;color:var(--tx3);margin-top:6px;padding-top:6px;border-top:1px solid var(--b2)">'+(clNames.length>1?'Clinicians: ':'Clinician: ')+clName+'</div></div>';
     });
     html += '</div></div>';
   });
@@ -4602,6 +4607,7 @@ function renderAdminSchedule() {
           </div>
         </div>
         <select class="sch-select" id="cl_${slotId}" style="width:100%">${clinOpts}</select>
+        <select class="sch-select" id="cl2_${slotId}" style="width:100%;margin-top:6px">${clinOpts.replace('— Clinician —','— 2nd Clinician (optional) —')}</select>
         <div id="flag_${slotId}" style="margin-top:6px"></div>
       </div>`;
     });
@@ -4621,6 +4627,7 @@ function renderAdminSchedule() {
       const s4 = document.getElementById(`c4_${slotId}`);
       const s5 = document.getElementById(`c5_${slotId}`);
       const sc = document.getElementById(`cl_${slotId}`);
+      const sc2 = document.getElementById(`cl2_${slotId}`);
       const getName = id => { const c = campers.find(x=>x.id==id); return c ? c.first_name+' '+c.last_name : ''; };
       if (s1 && existing.camper_1_id) { s1.value = existing.camper_1_id; const ti=document.getElementById('c1i_'+slotId); if(ti) ti.value=getName(existing.camper_1_id); }
       if (s2 && existing.camper_2_id) { s2.value = existing.camper_2_id; const ti=document.getElementById('c2i_'+slotId); if(ti) ti.value=getName(existing.camper_2_id); }
@@ -4628,6 +4635,7 @@ function renderAdminSchedule() {
       if (s4 && existing.camper_4_id) { s4.value = existing.camper_4_id; const ti=document.getElementById('c4i_'+slotId); if(ti) ti.value=getName(existing.camper_4_id); }
       if (s5 && existing.camper_5_id) { s5.value = existing.camper_5_id; const ti=document.getElementById('c5i_'+slotId); if(ti) ti.value=getName(existing.camper_5_id); }
       if (sc && existing.clinician_id) sc.value = existing.clinician_id;
+      if (sc2 && existing.clinician_2_id) sc2.value = existing.clinician_2_id;
     });
   });
 
@@ -4656,7 +4664,9 @@ function openAddGameModal() {
   document.getElementById('agCamper5').innerHTML = '<option value="">— None —</option>' + camperOpts;
 
   const clinSorted = [...clinicians].sort((a,b)=>(a.name||'').localeCompare(b.name||''));
-  document.getElementById('agClinician').innerHTML = '<option value="">— None —</option>' + clinSorted.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  const clinHtml = '<option value="">— None —</option>' + clinSorted.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  document.getElementById('agClinician').innerHTML = clinHtml;
+  const ag2 = document.getElementById('agClinician2'); if (ag2) ag2.innerHTML = clinHtml;
 
   document.getElementById('agErr').style.display = 'none';
   openModal('mAddGame');
@@ -4672,6 +4682,7 @@ async function saveAddGame() {
   const c4 = document.getElementById('agCamper4').value || null;
   const c5 = document.getElementById('agCamper5').value || null;
   const cl = document.getElementById('agClinician').value || null;
+  const cl2 = document.getElementById('agClinician2')?.value || null;
   const err = document.getElementById('agErr');
   err.style.display = 'none';
   if (!c1) { err.textContent = 'At least one camper is required.'; err.style.display = 'block'; return; }
@@ -4680,7 +4691,7 @@ async function saveAddGame() {
   btn.disabled = true; btn.textContent = 'Saving...';
   try {
     const existing = scheduleData.find(s => s.day === day && s.time_slot === slot && s.court === court);
-    const payload = { day, time_slot: slot, court, camper_1_id: c1, camper_2_id: c2, camper_3_id: c3, camper_4_id: c4, camper_5_id: c5, clinician_id: cl };
+    const payload = { day, time_slot: slot, court, camper_1_id: c1, camper_2_id: c2, camper_3_id: c3, camper_4_id: c4, camper_5_id: c5, clinician_id: cl, clinician_2_id: cl2 };
     if (existing) {
       await supa('schedule','PATCH',payload,`?id=eq.${existing.id}`);
       toast('Game updated');
@@ -4709,6 +4720,7 @@ async function saveSlot(dayKey, slot, court) {
   const c4 = document.getElementById(`c4_${slotId}`)?.value || null;
   const c5 = document.getElementById(`c5_${slotId}`)?.value || null;
   const cl = document.getElementById(`cl_${slotId}`)?.value || null;
+  const cl2 = document.getElementById(`cl2_${slotId}`)?.value || null;
   if (!c1 && !c2 && !c3 && !c4 && !c5) { toast('Select at least one camper', true); return; }
 
   // Validate before save
@@ -4729,7 +4741,8 @@ async function saveSlot(dayKey, slot, court) {
     camper_3_id: c3 || null,
     camper_4_id: c4 || null,
     camper_5_id: c5 || null,
-    clinician_id: cl && !cl.startsWith('ph_') ? cl : null
+    clinician_id: cl && !cl.startsWith('ph_') ? cl : null,
+    clinician_2_id: cl2 && !cl2.startsWith('ph_') ? cl2 : null
   };
 
   // Check if exists
@@ -4926,7 +4939,7 @@ function renderClinicianSchedule() {
   // sort order in find().
   const matchedClin = findMatchingClinician();
   const clinId = matchedClin?.id || CU.id;
-  const mySlots = scheduleData.filter(s => s.clinician_id === clinId)
+  const mySlots = scheduleData.filter(s => String(s.clinician_id)===String(clinId) || String(s.clinician_2_id)===String(clinId))
     .sort((a,b) => {
       const dayOrder = ['Friday May 1, 2026','Saturday May 2, 2026','Sunday May 3, 2026'];
       const d = dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day);
@@ -5340,7 +5353,8 @@ async function saveGeneratedSchedule() {
       camper_1_id: s.camper_1_id, camper_2_id: s.camper_2_id,
       camper_3_id: s.camper_3_id, camper_4_id: s.camper_4_id,
       camper_5_id: s.camper_5_id,
-      clinician_id: s.clinician_id
+      clinician_id: s.clinician_id,
+      clinician_2_id: s.clinician_2_id
     }));
 
     for (let i = 0; i < payload.length; i += 20) {
@@ -5553,7 +5567,8 @@ async function uploadScheduleCSV(input) {
     const c4Raw = row['camper 4'] || '';
     const c5Raw = row['camper 5'] || '';
     const clRaw = row['clinician'] || '';
-    if (!c1Raw && !c2Raw && !c3Raw && !c4Raw && !c5Raw && !clRaw) return; // skip rows with no participants
+    const cl2Raw = row['clinician 2'] || '';
+    if (!c1Raw && !c2Raw && !c3Raw && !c4Raw && !c5Raw && !clRaw && !cl2Raw) return; // skip rows with no participants
 
     const c1 = c1Raw ? findCamper(c1Raw) : null;
     const c2 = c2Raw ? findCamper(c2Raw) : null;
@@ -5561,6 +5576,7 @@ async function uploadScheduleCSV(input) {
     const c4 = c4Raw ? findCamper(c4Raw) : null;
     const c5 = c5Raw ? findCamper(c5Raw) : null;
     const cl = clRaw ? findClin(clRaw) : null;
+    const cl2 = cl2Raw ? findClin(cl2Raw) : null;
 
     if (c1Raw && !c1) errors.push(`Row ${i+2}: "${c1Raw}" not found`);
     if (c2Raw && !c2) errors.push(`Row ${i+2}: "${c2Raw}" not found`);
@@ -5568,17 +5584,20 @@ async function uploadScheduleCSV(input) {
     if (c4Raw && !c4) errors.push(`Row ${i+2}: "${c4Raw}" not found`);
     if (c5Raw && !c5) errors.push(`Row ${i+2}: "${c5Raw}" not found`);
     if (clRaw && !cl) errors.push(`Row ${i+2}: clinician "${clRaw}" not found`);
+    if (cl2Raw && !cl2) errors.push(`Row ${i+2}: clinician 2 "${cl2Raw}" not found`);
 
     parsed.push({
       day: row.day, time_slot: row.time, court: row.court,
       camper_1_id: c1?.id||null, camper_2_id: c2?.id||null, camper_3_id: c3?.id||null, camper_4_id: c4?.id||null, camper_5_id: c5?.id||null,
       clinician_id: cl?.id||null,
+      clinician_2_id: cl2?.id||null,
       camper_1_name: c1 ? c1.first_name+' '+c1.last_name : c1Raw,
       camper_2_name: c2 ? c2.first_name+' '+c2.last_name : c2Raw,
       camper_3_name: c3 ? c3.first_name+' '+c3.last_name : c3Raw,
       camper_4_name: c4 ? c4.first_name+' '+c4.last_name : c4Raw,
       camper_5_name: c5 ? c5.first_name+' '+c5.last_name : c5Raw,
-      clinician_name: cl ? (cl.name||cl.first_name+' '+cl.last_name) : clRaw
+      clinician_name: cl ? (cl.name||cl.first_name+' '+cl.last_name) : clRaw,
+      clinician_2_name: cl2 ? (cl2.name||cl2.first_name+' '+cl2.last_name) : cl2Raw
     });
   });
 
