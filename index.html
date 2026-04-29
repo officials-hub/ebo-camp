@@ -2250,14 +2250,22 @@ function buildEmailHTML(camper,evals,crewBySlot){
     const meta=[];if(ev.clinician_name)meta.push(ev.clinician_name);if(ev.eval_date)meta.push(ev.eval_date);if(ev.court)meta.push('Court '+ev.court);if(ev.eval_time)meta.push(ev.eval_time);
     const crews = crewBySlot[slotKey(ev.eval_date, ev.court, ev.eval_time)];
     const crewArr = Array.isArray(crews) ? crews.filter(x => x && x.note && x.note.trim()) : (crews && crews.note ? [crews] : []);
-    const crewBlock = crewArr.length ? crewArr.map(crew => `<div style="margin-top:8px;padding:10px 12px;background:#fff7ec;border:1px solid #f0d9a8;border-radius:6px;"><div style="font-size:10px;font-weight:700;letter-spacing:.12em;color:#8a5a00;text-transform:uppercase;margin-bottom:4px;">Crew Feedback${crew.clinician_name?' · '+crew.clinician_name:''}</div><div style="color:#333333;font-size:13px;line-height:1.5;">${crew.note}</div></div>`).join('') : '';
-    return`<div style="background:#f7f5f2;border:1px solid #e5e1da;border-radius:8px;padding:12px 14px;margin-bottom:8px;border-left:4px solid #000000;"><div style="font-size:12px;color:#000000;margin-bottom:6px;font-weight:700;letter-spacing:.04em;">${meta.join(' · ')}</div>${ev.comments?`<div style="color:#333333;font-size:13px;line-height:1.5;">${ev.comments}</div>`:''}${crewBlock}</div>`;
+    const crewBlock = crewArr.length ? crewArr.map(crew => `<div style="margin-top:10px;padding:10px 12px;background:#fff7ec;border:1px solid #f0d9a8;border-radius:6px;"><div style="font-size:10px;font-weight:700;letter-spacing:.12em;color:#8a5a00;text-transform:uppercase;margin-bottom:4px;">Crew Feedback${crew.clinician_name?' · '+crew.clinician_name:''}</div><div style="color:#333333;font-size:13px;line-height:1.5;">${crew.note}</div></div>`).join('') : '';
+    // Per-eval score breakdown so the camper sees what each clinician gave them this game
+    const scoreRows = CFG.CATS.map(cat => {
+      const v = ev.scores?.[catKey(cat)];
+      if (v == null) return '';
+      return `<tr><td style="padding:4px 0;color:#444;font-size:13px;">${cat}</td><td style="padding:4px 0;text-align:right;color:#000;font-weight:700;font-size:13px;width:60px;">${v} / ${CFG.SCALE_MAX}</td></tr>`;
+    }).filter(Boolean).join('');
+    const overallRow = (ev.overall_score != null) ? `<tr><td style="padding:6px 0;border-top:1px solid #d0ccc4;color:#000;font-weight:800;font-size:13px;letter-spacing:.04em;text-transform:uppercase;">Overall</td><td style="padding:6px 0;border-top:1px solid #d0ccc4;text-align:right;color:#e05a00;font-weight:800;font-size:14px;">${Number(ev.overall_score).toFixed(1)} / ${CFG.SCALE_MAX}</td></tr>` : '';
+    const scoreBlock = scoreRows ? `<div style="margin-top:10px;padding:10px 12px;background:#ffffff;border:1px solid #e5e1da;border-radius:6px;"><div style="font-size:10px;font-weight:700;letter-spacing:.12em;color:#666;text-transform:uppercase;margin-bottom:4px;">Scores this game</div><table style="width:100%;border-collapse:collapse;">${scoreRows}${overallRow}</table></div>` : '';
+    return`<div style="background:#f7f5f2;border:1px solid #e5e1da;border-radius:8px;padding:12px 14px;margin-bottom:10px;border-left:4px solid #e05a00;"><div style="font-size:12px;color:#000000;margin-bottom:6px;font-weight:700;letter-spacing:.04em;">${meta.join(' · ')}</div>${scoreBlock}${ev.comments?`<div style="margin-top:10px;color:#333333;font-size:13px;line-height:1.5;background:#ffffff;border:1px solid #e5e1da;border-radius:6px;padding:10px 12px;"><div style="font-size:10px;font-weight:700;letter-spacing:.12em;color:#666;text-transform:uppercase;margin-bottom:4px;">Clinician Comments</div>${ev.comments}</div>`:''}${crewBlock}</div>`;
   }).join('');
   const evalDetailsBlock=evalDetails?`<div style="margin-top:18px;"><div style="font-size:11px;font-weight:700;letter-spacing:.12em;color:#666666;text-transform:uppercase;margin-bottom:8px;">Evaluation Notes</div>${evalDetails}</div>`:'';
   return`<div style="max-width:480px;margin:0 auto;font-family:Arial,Helvetica,sans-serif;background:#ffffff;border-radius:10px;overflow:hidden;border:1px solid #e0ddd8;box-shadow:0 4px 16px rgba(0,0,0,.08);">
-<div style="background:#000000;padding:18px 20px;">
-  <div style="color:#ffffff;font-size:15px;font-weight:700;letter-spacing:.06em;">${CFG.CAMP_NAME}</div>
-  <div style="color:#bdbdbd;font-size:11px;margin-top:3px;letter-spacing:.16em;text-transform:uppercase;">Evaluation Results</div>
+<div style="background:#e05a00;padding:22px 20px;border-bottom:4px solid #1a1a1a;">
+  <div style="color:#ffffff;font-size:17px;font-weight:800;letter-spacing:.05em;line-height:1.25;">${CFG.CAMP_NAME}</div>
+  <div style="color:#fff3e6;font-size:11px;margin-top:6px;letter-spacing:.2em;text-transform:uppercase;font-weight:700;">Your Evaluation Results</div>
 </div>
 <div style="padding:20px;background:#ffffff;">
   <div style="color:#1a1a1a;font-size:20px;font-weight:800;margin-bottom:4px;letter-spacing:.02em;">${camper.first_name} ${camper.last_name}</div>
