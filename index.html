@@ -85,7 +85,7 @@ body::before{content:'';display:none}
 .nuname{font-family:'Oswald',sans-serif;font-size:15px;color:var(--or);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex-shrink:1}
 .nsignout{background:none;border:1px solid var(--b2);border-radius:6px;padding:5px 10px;font-size:11px;color:var(--tx2);cursor:pointer;font-family:'Source Sans 3',sans-serif;white-space:nowrap;flex-shrink:0}
 @media(max-width:480px){
-  .topnav{padding:8px 10px;gap:6px}
+  .topnav{padding:calc(8px + env(safe-area-inset-top,0px)) calc(10px + env(safe-area-inset-right,0px)) 8px calc(10px + env(safe-area-inset-left,0px));gap:6px}
   .nbrand{gap:7px}
   .nlogo{width:30px;height:30px}
   .ntitle{font-size:15px}
