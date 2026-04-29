@@ -1303,6 +1303,8 @@ async function enableNotifications(){
 <label class="flabel" style="margin-top:10px">Camper 5</label><select class="finput" id="agCamper5"></select>
 <label class="flabel" style="margin-top:10px">Clinician</label><select class="finput" id="agClinician"></select>
 <label class="flabel" style="margin-top:10px">Clinician 2 (optional)</label><select class="finput" id="agClinician2"></select>
+<label class="flabel" style="margin-top:10px">Clinician 3 (optional)</label><select class="finput" id="agClinician3"></select>
+<label class="flabel" style="margin-top:10px">Clinician 4 (optional)</label><select class="finput" id="agClinician4"></select>
 <div id="agErr" style="display:none;background:#fee;color:#c00;padding:8px;border-radius:6px;font-size:12px;margin-top:10px"></div>
 <div style="display:flex;gap:8px;margin-top:14px"><button class="btn bsec" style="flex:1" onclick="closeModal('mAddGame')" type="button">Cancel</button><button class="btn bor" style="flex:1" onclick="saveAddGame()" id="agSaveBtn" type="button">Save Game</button></div>
 </div></div></div>
@@ -1889,7 +1891,7 @@ function renderLiveEvalGameList(){
     return;
   }
   const myGames = scheduleData
-    .filter(s => String(s.clinician_id)===String(matched.id) || String(s.clinician_2_id)===String(matched.id))
+    .filter(s => String(s.clinician_id)===String(matched.id) || String(s.clinician_2_id)===String(matched.id) || String(s.clinician_3_id)===String(matched.id) || String(s.clinician_4_id)===String(matched.id))
     .sort((a,b)=>{
       const dayOrder=['Friday May 1, 2026','Saturday May 2, 2026','Sunday May 3, 2026'];
       const d=dayOrder.indexOf(a.day)-dayOrder.indexOf(b.day);
@@ -4348,9 +4350,10 @@ function renderDailyView(){
       const c3 = campers.find(x=>x.id===s.camper_3_id);
       const c4 = campers.find(x=>x.id===s.camper_4_id);
       const c5 = campers.find(x=>x.id===s.camper_5_id);
-      const cl = clinicians.find(x=>x.id===s.clinician_id);
-      const cl2obj = clinicians.find(x=>x.id===s.clinician_2_id);
-      const clNames = [cl?.name||(cl?cl.first_name+' '+cl.last_name:''), cl2obj?.name||(cl2obj?cl2obj.first_name+' '+cl2obj.last_name:'')].filter(Boolean);
+      const clObjs = [s.clinician_id, s.clinician_2_id, s.clinician_3_id, s.clinician_4_id]
+        .map(id => clinicians.find(x => x.id === id))
+        .filter(Boolean);
+      const clNames = clObjs.map(c => c.name || (c.first_name+' '+c.last_name)).filter(Boolean);
       const clName = clNames.length ? clNames.join(' & ') : '—';
       const evals1 = c1 ? evaluations.filter(e=>e.camper_id===c1.id).length : 0;
       const evals2 = c2 ? evaluations.filter(e=>e.camper_id===c2.id).length : 0;
@@ -4610,6 +4613,8 @@ function renderAdminSchedule() {
         </div>
         <select class="sch-select" id="cl_${slotId}" style="width:100%">${clinOpts}</select>
         <select class="sch-select" id="cl2_${slotId}" style="width:100%;margin-top:6px">${clinOpts.replace('— Clinician —','— 2nd Clinician (optional) —')}</select>
+        <select class="sch-select" id="cl3_${slotId}" style="width:100%;margin-top:6px">${clinOpts.replace('— Clinician —','— 3rd Clinician (optional) —')}</select>
+        <select class="sch-select" id="cl4_${slotId}" style="width:100%;margin-top:6px">${clinOpts.replace('— Clinician —','— 4th Clinician (optional) —')}</select>
         <div id="flag_${slotId}" style="margin-top:6px"></div>
       </div>`;
     });
@@ -4630,6 +4635,8 @@ function renderAdminSchedule() {
       const s5 = document.getElementById(`c5_${slotId}`);
       const sc = document.getElementById(`cl_${slotId}`);
       const sc2 = document.getElementById(`cl2_${slotId}`);
+      const sc3 = document.getElementById(`cl3_${slotId}`);
+      const sc4 = document.getElementById(`cl4_${slotId}`);
       const getName = id => { const c = campers.find(x=>x.id==id); return c ? c.first_name+' '+c.last_name : ''; };
       if (s1 && existing.camper_1_id) { s1.value = existing.camper_1_id; const ti=document.getElementById('c1i_'+slotId); if(ti) ti.value=getName(existing.camper_1_id); }
       if (s2 && existing.camper_2_id) { s2.value = existing.camper_2_id; const ti=document.getElementById('c2i_'+slotId); if(ti) ti.value=getName(existing.camper_2_id); }
@@ -4638,6 +4645,8 @@ function renderAdminSchedule() {
       if (s5 && existing.camper_5_id) { s5.value = existing.camper_5_id; const ti=document.getElementById('c5i_'+slotId); if(ti) ti.value=getName(existing.camper_5_id); }
       if (sc && existing.clinician_id) sc.value = existing.clinician_id;
       if (sc2 && existing.clinician_2_id) sc2.value = existing.clinician_2_id;
+      if (sc3 && existing.clinician_3_id) sc3.value = existing.clinician_3_id;
+      if (sc4 && existing.clinician_4_id) sc4.value = existing.clinician_4_id;
     });
   });
 
@@ -4668,7 +4677,7 @@ function openAddGameModal() {
   const clinSorted = [...clinicians].sort((a,b)=>(a.name||'').localeCompare(b.name||''));
   const clinHtml = '<option value="">— None —</option>' + clinSorted.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
   document.getElementById('agClinician').innerHTML = clinHtml;
-  const ag2 = document.getElementById('agClinician2'); if (ag2) ag2.innerHTML = clinHtml;
+  ['agClinician2','agClinician3','agClinician4'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = clinHtml; });
 
   document.getElementById('agErr').style.display = 'none';
   openModal('mAddGame');
@@ -4685,6 +4694,8 @@ async function saveAddGame() {
   const c5 = document.getElementById('agCamper5').value || null;
   const cl = document.getElementById('agClinician').value || null;
   const cl2 = document.getElementById('agClinician2')?.value || null;
+  const cl3 = document.getElementById('agClinician3')?.value || null;
+  const cl4 = document.getElementById('agClinician4')?.value || null;
   const err = document.getElementById('agErr');
   err.style.display = 'none';
   if (!c1) { err.textContent = 'At least one camper is required.'; err.style.display = 'block'; return; }
@@ -4693,7 +4704,7 @@ async function saveAddGame() {
   btn.disabled = true; btn.textContent = 'Saving...';
   try {
     const existing = scheduleData.find(s => s.day === day && s.time_slot === slot && s.court === court);
-    const payload = { day, time_slot: slot, court, camper_1_id: c1, camper_2_id: c2, camper_3_id: c3, camper_4_id: c4, camper_5_id: c5, clinician_id: cl, clinician_2_id: cl2 };
+    const payload = { day, time_slot: slot, court, camper_1_id: c1, camper_2_id: c2, camper_3_id: c3, camper_4_id: c4, camper_5_id: c5, clinician_id: cl, clinician_2_id: cl2, clinician_3_id: cl3, clinician_4_id: cl4 };
     if (existing) {
       await supa('schedule','PATCH',payload,`?id=eq.${existing.id}`);
       toast('Game updated');
@@ -4723,6 +4734,8 @@ async function saveSlot(dayKey, slot, court) {
   const c5 = document.getElementById(`c5_${slotId}`)?.value || null;
   const cl = document.getElementById(`cl_${slotId}`)?.value || null;
   const cl2 = document.getElementById(`cl2_${slotId}`)?.value || null;
+  const cl3 = document.getElementById(`cl3_${slotId}`)?.value || null;
+  const cl4 = document.getElementById(`cl4_${slotId}`)?.value || null;
   if (!c1 && !c2 && !c3 && !c4 && !c5) { toast('Select at least one camper', true); return; }
 
   // Validate before save
@@ -4744,7 +4757,9 @@ async function saveSlot(dayKey, slot, court) {
     camper_4_id: c4 || null,
     camper_5_id: c5 || null,
     clinician_id: cl && !cl.startsWith('ph_') ? cl : null,
-    clinician_2_id: cl2 && !cl2.startsWith('ph_') ? cl2 : null
+    clinician_2_id: cl2 && !cl2.startsWith('ph_') ? cl2 : null,
+    clinician_3_id: cl3 && !cl3.startsWith('ph_') ? cl3 : null,
+    clinician_4_id: cl4 && !cl4.startsWith('ph_') ? cl4 : null
   };
 
   // Check if exists
@@ -4909,12 +4924,12 @@ function renderCamperSchedule() {
       return c ? c.first_name + ' ' + c.last_name : '';
     }).filter(Boolean);
 
-    // Clinician name
-    let clinName = '';
-    if (s.clinician_id) {
-      const cl = clinicians.find(x => x.id === s.clinician_id);
-      clinName = cl ? (cl.name || cl.first_name + ' ' + cl.last_name) : '';
-    }
+    // Clinician name(s) — show all up to four
+    const clinNames = [s.clinician_id, s.clinician_2_id, s.clinician_3_id, s.clinician_4_id]
+      .map(id => clinicians.find(x => x.id === id))
+      .filter(Boolean)
+      .map(cl => cl.name || (cl.first_name + ' ' + cl.last_name));
+    const clinName = clinNames.join(' & ');
 
     html += `<div class="sch-card">
       <div class="sch-card-meta">${s.time_slot}</div>
@@ -4941,7 +4956,7 @@ function renderClinicianSchedule() {
   // sort order in find().
   const matchedClin = findMatchingClinician();
   const clinId = matchedClin?.id || CU.id;
-  const mySlots = scheduleData.filter(s => String(s.clinician_id)===String(clinId) || String(s.clinician_2_id)===String(clinId))
+  const mySlots = scheduleData.filter(s => String(s.clinician_id)===String(clinId) || String(s.clinician_2_id)===String(clinId) || String(s.clinician_3_id)===String(clinId) || String(s.clinician_4_id)===String(clinId))
     .sort((a,b) => {
       const dayOrder = ['Friday May 1, 2026','Saturday May 2, 2026','Sunday May 3, 2026'];
       const d = dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day);
@@ -5356,7 +5371,9 @@ async function saveGeneratedSchedule() {
       camper_3_id: s.camper_3_id, camper_4_id: s.camper_4_id,
       camper_5_id: s.camper_5_id,
       clinician_id: s.clinician_id,
-      clinician_2_id: s.clinician_2_id
+      clinician_2_id: s.clinician_2_id,
+      clinician_3_id: s.clinician_3_id,
+      clinician_4_id: s.clinician_4_id
     }));
 
     for (let i = 0; i < payload.length; i += 20) {
@@ -5570,7 +5587,9 @@ async function uploadScheduleCSV(input) {
     const c5Raw = row['camper 5'] || '';
     const clRaw = row['clinician'] || '';
     const cl2Raw = row['clinician 2'] || '';
-    if (!c1Raw && !c2Raw && !c3Raw && !c4Raw && !c5Raw && !clRaw && !cl2Raw) return; // skip rows with no participants
+    const cl3Raw = row['clinician 3'] || '';
+    const cl4Raw = row['clinician 4'] || '';
+    if (!c1Raw && !c2Raw && !c3Raw && !c4Raw && !c5Raw && !clRaw && !cl2Raw && !cl3Raw && !cl4Raw) return; // skip rows with no participants
 
     const c1 = c1Raw ? findCamper(c1Raw) : null;
     const c2 = c2Raw ? findCamper(c2Raw) : null;
@@ -5579,6 +5598,8 @@ async function uploadScheduleCSV(input) {
     const c5 = c5Raw ? findCamper(c5Raw) : null;
     const cl = clRaw ? findClin(clRaw) : null;
     const cl2 = cl2Raw ? findClin(cl2Raw) : null;
+    const cl3 = cl3Raw ? findClin(cl3Raw) : null;
+    const cl4 = cl4Raw ? findClin(cl4Raw) : null;
 
     if (c1Raw && !c1) errors.push(`Row ${i+2}: "${c1Raw}" not found`);
     if (c2Raw && !c2) errors.push(`Row ${i+2}: "${c2Raw}" not found`);
@@ -5587,19 +5608,25 @@ async function uploadScheduleCSV(input) {
     if (c5Raw && !c5) errors.push(`Row ${i+2}: "${c5Raw}" not found`);
     if (clRaw && !cl) errors.push(`Row ${i+2}: clinician "${clRaw}" not found`);
     if (cl2Raw && !cl2) errors.push(`Row ${i+2}: clinician 2 "${cl2Raw}" not found`);
+    if (cl3Raw && !cl3) errors.push(`Row ${i+2}: clinician 3 "${cl3Raw}" not found`);
+    if (cl4Raw && !cl4) errors.push(`Row ${i+2}: clinician 4 "${cl4Raw}" not found`);
 
     parsed.push({
       day: row.day, time_slot: row.time, court: row.court,
       camper_1_id: c1?.id||null, camper_2_id: c2?.id||null, camper_3_id: c3?.id||null, camper_4_id: c4?.id||null, camper_5_id: c5?.id||null,
       clinician_id: cl?.id||null,
       clinician_2_id: cl2?.id||null,
+      clinician_3_id: cl3?.id||null,
+      clinician_4_id: cl4?.id||null,
       camper_1_name: c1 ? c1.first_name+' '+c1.last_name : c1Raw,
       camper_2_name: c2 ? c2.first_name+' '+c2.last_name : c2Raw,
       camper_3_name: c3 ? c3.first_name+' '+c3.last_name : c3Raw,
       camper_4_name: c4 ? c4.first_name+' '+c4.last_name : c4Raw,
       camper_5_name: c5 ? c5.first_name+' '+c5.last_name : c5Raw,
       clinician_name: cl ? (cl.name||cl.first_name+' '+cl.last_name) : clRaw,
-      clinician_2_name: cl2 ? (cl2.name||cl2.first_name+' '+cl2.last_name) : cl2Raw
+      clinician_2_name: cl2 ? (cl2.name||cl2.first_name+' '+cl2.last_name) : cl2Raw,
+      clinician_3_name: cl3 ? (cl3.name||cl3.first_name+' '+cl3.last_name) : cl3Raw,
+      clinician_4_name: cl4 ? (cl4.name||cl4.first_name+' '+cl4.last_name) : cl4Raw
     });
   });
 
