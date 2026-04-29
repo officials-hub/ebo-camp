@@ -1377,12 +1377,28 @@ function toggleVoiceInput(taId,btnId){
   if(!SR){toast('Voice input not supported on this browser',true);return;}
   const ta=document.getElementById(taId),btn=document.getElementById(btnId);
   if(!ta||!btn)return;
-  if(_voice.active===taId){_voice.userStopped=true;_voice.rec?.stop();return;}
+  if(_voice.active===taId){
+    // User tapped stop — clean up immediately (don't trust onend on iOS)
+    _voice.userStopped=true;
+    try{_voice.rec?.stop();}catch(e){}
+    try{_voice.rec?.abort();}catch(e){}
+    btn.classList.remove('mic-on');btn.textContent='🎤';
+    _voice.rec=null;_voice.active=null;
+    return;
+  }
   // Stop any other active session first
-  if(_voice.rec){_voice.userStopped=true;try{_voice.rec.stop();}catch(e){}}
+  if(_voice.rec){
+    _voice.userStopped=true;
+    try{_voice.rec.stop();}catch(e){}
+    try{_voice.rec.abort();}catch(e){}
+    // Reset the previous button if any
+    const prevBtn=_voice.activeBtnId?document.getElementById(_voice.activeBtnId):null;
+    if(prevBtn){prevBtn.classList.remove('mic-on');prevBtn.textContent='🎤';}
+    _voice.rec=null;_voice.active=null;
+  }
   const rec=new SR();
   rec.continuous=true;rec.interimResults=true;rec.lang='en-US';
-  _voice.rec=rec;_voice.active=taId;_voice.userStopped=false;
+  _voice.rec=rec;_voice.active=taId;_voice.activeBtnId=btnId;_voice.userStopped=false;
   _voice.baseText=ta.value?ta.value.replace(/\s*$/,'')+' ':'';
   btn.classList.add('mic-on');btn.textContent='⏺';
   rec.onresult=(e)=>{
@@ -1404,8 +1420,9 @@ function toggleVoiceInput(taId,btnId){
     if(!_voice.userStopped&&_voice.active===taId){
       try{rec.start();return;}catch(e){}
     }
-    btn.classList.remove('mic-on');btn.textContent='🎤';
-    _voice.rec=null;_voice.active=null;
+    const liveBtn=_voice.activeBtnId?document.getElementById(_voice.activeBtnId):btn;
+    if(liveBtn){liveBtn.classList.remove('mic-on');liveBtn.textContent='🎤';}
+    _voice.rec=null;_voice.active=null;_voice.activeBtnId=null;
   };
   try{rec.start();}catch(e){btn.classList.remove('mic-on');btn.textContent='🎤';_voice.rec=null;_voice.active=null;toast('Could not start microphone',true);}
 }
