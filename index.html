@@ -4539,7 +4539,7 @@ function selectCamper(fieldId, id, name) {
   const hidden = document.getElementById(fieldId);
   if (hidden) hidden.value = id;
   // text input is c1i_ prefix
-  const textId = fieldId.replace(/^(c[123])_/, '$1i_');
+  const textId = fieldId.replace(/^(c[12345])_/, '$1i_');
   const text = document.getElementById(textId);
   if (text) text.value = name;
   const drop = document.getElementById(fieldId+'_drop');
