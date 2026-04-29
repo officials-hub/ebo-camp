@@ -1009,7 +1009,6 @@ async function enableNotifications(){
 <div style="background:var(--gray2);border:1px solid var(--b2);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column;height:calc(100dvh - 320px)">
 <div class="chat-messages" id="chatMsgsAdmin"></div>
 <div class="chat-input-row" style="display:flex;align-items:center;gap:8px">
-<label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--tx2);white-space:nowrap"><input type="checkbox" id="adminEmailBlast" style="accent-color:var(--or)"> Email</label>
 <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--tx2);white-space:nowrap"><input type="checkbox" id="adminPushBlast" style="accent-color:var(--or)"> Push</label>
 <textarea class="chat-input" id="chatInputAdmin" placeholder="Send announcement or message..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat('admin');}"></textarea>
 <button class="chat-send" id="adminChatSendBtn" onclick="sendChat('admin')">➤</button>
@@ -3366,11 +3365,6 @@ async function sendChat(role){
       renderChatMessages(suffix);
       const con=document.getElementById('chatMsgs'+suffix);
       if(con)con.scrollTop=con.scrollHeight;
-    }
-    // If admin checked email blast
-    if(role==='admin'&&document.getElementById('adminEmailBlast')?.checked){
-      sendChatEmailBlast(msg,displayName);
-      document.getElementById('adminEmailBlast').checked=false;
     }
     // If admin checked push blast
     if(role==='admin'&&document.getElementById('adminPushBlast')?.checked){
