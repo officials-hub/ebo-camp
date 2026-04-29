@@ -4145,7 +4145,10 @@ function openAddGameModal() {
   for (let h = 7; h <= 11; h++) { times.push(`${h}:00 AM`); times.push(`${h}:30 AM`); }
   times.push('12:00 PM','12:30 PM');
   for (let h = 1; h <= 9; h++) { times.push(`${h}:00 PM`); times.push(`${h}:30 PM`); }
-  document.getElementById('agTime').innerHTML = times.map(t => `<option>${t}</option>`).join('');
+  // Merge in any custom times that already exist on saved games (e.g. 6:10 PM)
+  const savedTimes = [...new Set(scheduleData.map(s => s.time_slot).filter(Boolean))];
+  const merged = [...new Set([...times, ...savedTimes])].sort((a,b) => timeToMinutes(a) - timeToMinutes(b));
+  document.getElementById('agTime').innerHTML = merged.map(t => `<option>${t}</option>`).join('');
   document.getElementById('agTime').value = '7:30 AM';
 
   const camperSorted = [...campers].sort((a,b)=>(a.last_name||'').localeCompare(b.last_name||''));
@@ -4994,7 +4997,8 @@ async function uploadScheduleCSV(input) {
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(new Uint8Array(buf), { type: 'array' });
     const ws = wb.Sheets[wb.SheetNames[0]];
-    const raw = XLSX.utils.sheet_to_json(ws, { defval: '', header: 1 });
+    // raw:false → Excel-formatted time cells come back as "5:00 PM" instead of 0.7083
+    const raw = XLSX.utils.sheet_to_json(ws, { defval: '', header: 1, raw: false });
     if (!raw.length) { toast('Empty file', true); input.value=''; return; }
     const headers = raw[0].map(h => String(h||'').trim().toLowerCase());
     rows = raw.slice(1).map(r => {
