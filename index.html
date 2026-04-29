@@ -387,6 +387,9 @@ td{padding:9px 12px;border-bottom:1px solid var(--b1);vertical-align:middle;colo
 
 /* CHAT */
 .chat-wrap{display:flex;flex-direction:column;height:calc(100dvh - 120px)}
+/* Chat views: let flex fill the available space so the input row never tucks behind the bottom nav */
+#cv-chat.on,#sv-chat.on{display:flex;flex-direction:column;flex:1;min-height:0;padding-bottom:0}
+#cv-chat.on .chat-wrap,#sv-chat.on .chat-wrap{flex:1;min-height:0;height:auto!important}
 .chat-messages{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
 .chat-msg{display:flex;flex-direction:column;max-width:82%}
 .chat-msg.mine{align-self:flex-end;align-items:flex-end}
