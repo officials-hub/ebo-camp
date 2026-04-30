@@ -3556,10 +3556,20 @@ async function sendEmailBlast(){
           disposition: 'attachment'
         }];
       }
-      await fetch(CFG.EMAIL_FN_URL, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
-      sent++;
-    }catch(e){ failed++; }
-    await new Promise(r=>setTimeout(r,120));
+      const res = await fetch(CFG.EMAIL_FN_URL, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+      if (res.ok) {
+        sent++;
+      } else {
+        failed++;
+        const txt = await res.text().catch(()=>'');
+        console.warn(`Blast send failed for ${r.email}: HTTP ${res.status} ${txt}`);
+      }
+    }catch(e){
+      failed++;
+      console.warn(`Blast send threw for ${r.email}: ${e.message}`);
+    }
+    // Resend free tier caps at 2 emails/second — 600ms keeps us safely below
+    await new Promise(r=>setTimeout(r,600));
   }
 
   // Log to history
