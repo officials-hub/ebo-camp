@@ -4958,6 +4958,29 @@ function validateSlot(day, slot, court, c1, c2, c3, c4, cl, excludeId, c5) {
     }
   }
 
+  // Same-time, different-court conflicts (double-booking)
+  const sameTimeOtherCourts = daySlots.filter(s => s.time_slot === slot && s.court !== court);
+  camperIds.forEach(cid => {
+    sameTimeOtherCourts.forEach(other => {
+      const otherCampers = [other.camper_1_id, other.camper_2_id, other.camper_3_id, other.camper_4_id, other.camper_5_id];
+      if (otherCampers.some(x => String(x) === String(cid))) {
+        const camper = campers.find(c => c.id === cid);
+        const name = camper ? camper.first_name + ' ' + camper.last_name : 'Camper';
+        flags.push({ type: 'error', msg: `${name} is also assigned to ${other.court} at ${slot}` });
+      }
+    });
+  });
+  if (cl && !cl.startsWith('ph_')) {
+    sameTimeOtherCourts.forEach(other => {
+      const otherClins = [other.clinician_id, other.clinician_2_id, other.clinician_3_id, other.clinician_4_id];
+      if (otherClins.some(x => String(x) === String(cl))) {
+        const clObj = clinicians.find(c => String(c.id) === String(cl));
+        const name = clObj ? clObj.name : 'Clinician';
+        flags.push({ type: 'error', msg: `${name} is also assigned to ${other.court} at ${slot}` });
+      }
+    });
+  }
+
   return flags;
 }
 
@@ -5435,6 +5458,30 @@ function validateGeneratedSchedule(slots, campersAll) {
       for (let i=0;i<times.length-1;i++) {
         if (times[i+1]-times[i]===60) warnings.push({type:'error', msg:`${name} has back-to-back games on ${day}`});
       }
+      // Same-time, different-court double-bookings
+      const byTime = {};
+      games.forEach(g => { (byTime[g.time_slot] = byTime[g.time_slot] || []).push(g.court); });
+      Object.entries(byTime).forEach(([t, courts]) => {
+        if (courts.length > 1) warnings.push({type:'error', msg:`${name} is double-booked at ${t} on ${day} (${courts.join(', ')})`});
+      });
+    });
+
+    // Clinician double-bookings at the same time
+    const clinIdSet = new Set();
+    daySlots.forEach(s => {
+      [s.clinician_id, s.clinician_2_id, s.clinician_3_id, s.clinician_4_id].forEach(id => { if (id) clinIdSet.add(id); });
+    });
+    clinIdSet.forEach(cid => {
+      const games = daySlots.filter(s => [s.clinician_id, s.clinician_2_id, s.clinician_3_id, s.clinician_4_id].some(x => x === cid));
+      const byTime = {};
+      games.forEach(g => { (byTime[g.time_slot] = byTime[g.time_slot] || []).push(g.court); });
+      Object.entries(byTime).forEach(([t, courts]) => {
+        if (courts.length > 1) {
+          const clObj = (typeof clinicians !== 'undefined') ? clinicians.find(c => String(c.id) === String(cid)) : null;
+          const clName = clObj ? (clObj.name || (clObj.first_name+' '+clObj.last_name)) : `Clinician (id ${cid})`;
+          warnings.push({type:'error', msg:`${clName} is double-booked at ${t} on ${day} (${courts.join(', ')})`});
+        }
+      });
     });
   });
 
