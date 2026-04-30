@@ -4099,7 +4099,37 @@ function renderMyProfile(role){
     </div>
     <button class="btn bor" style="width:100%;padding:14px;font-family:'Oswald',sans-serif;font-size:18px;letter-spacing:.08em" onclick="saveMyProfile('${role}')">SAVE PROFILE</button>
     <div id="mpStatus" style="margin-top:10px;text-align:center;font-size:13px;color:var(--tx2)"></div>
+    ${role==='camper' ? `
+    <div style="margin-top:22px">
+      <div class="pmod-sec" style="font-family:'Oswald',sans-serif;font-size:13px;color:var(--or);letter-spacing:.08em;margin-bottom:8px">🎥 MY GAME FILM</div>
+      <div id="mpFilmList"></div>
+    </div>` : ''}
   `;
+  if(role==='camper'){renderMyFilmList();}
+}
+
+// Render the camper's own film list into #mpFilmList — same card style as the
+// profile modal but bound to the current user.
+function renderMyFilmList(){
+  const con=document.getElementById('mpFilmList'); if(!con||!CU?.id) return;
+  const films=camperFilms(CU.id);
+  if(!films.length){con.innerHTML='<div style="font-size:13px;color:var(--tx3);padding:4px 0">No game film posted yet.</div>';return;}
+  con.innerHTML=films.map(f=>{
+    const id=ytId(f.youtube_url);
+    const thumb=id?ytThumb(id):'';
+    const date=new Date(f.posted_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    return`<a href="${f.youtube_url}" target="_blank" rel="noopener" style="display:flex;gap:10px;background:var(--gray2);border:1px solid var(--b2);border-radius:var(--rs);padding:8px;margin-bottom:8px;text-decoration:none;color:inherit">
+      ${thumb?`<img src="${thumb}" style="width:96px;height:54px;object-fit:cover;border-radius:4px;flex-shrink:0">`:'<div style="width:96px;height:54px;background:#000;border-radius:4px;flex-shrink:0"></div>'}
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center">
+        <div class="mpFilm-title" data-url="${f.youtube_url}" style="font-size:13px;color:var(--tx);font-weight:600;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">Loading title...</div>
+        <div style="font-size:11px;color:var(--tx3);margin-top:4px">${date} · Watch on YouTube ↗</div>
+      </div>
+    </a>`;
+  }).join('');
+  con.querySelectorAll('.mpFilm-title').forEach(async el=>{
+    const t=await ytTitle(el.dataset.url);
+    el.textContent=t||el.dataset.url;
+  });
 }
 
 function updateMyPhotoPreview(role){
