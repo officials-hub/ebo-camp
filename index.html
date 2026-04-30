@@ -3732,8 +3732,16 @@ function openCamperProfile(id,evalContext){
 // ═══ GAME FILM ═══
 function ytId(url){
   if(!url)return null;
-  const m=url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/|live\/))([a-zA-Z0-9_-]{11})/);
-  return m?m[1]:null;
+  // youtu.be/<id>
+  let m = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+  if (m) return m[1];
+  // youtube.com/{embed,v,shorts,live}/<id>
+  m = url.match(/youtube\.com\/(?:embed|v|shorts|live)\/([a-zA-Z0-9_-]{11})/);
+  if (m) return m[1];
+  // watch?...&v=<id> — handles arbitrary query parameter order (e.g. ?si=...&v=...)
+  m = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+  if (m) return m[1];
+  return null;
 }
 function ytThumb(id){return`https://img.youtube.com/vi/${id}/hqdefault.jpg`;}
 async function ytTitle(url){
