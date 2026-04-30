@@ -413,14 +413,14 @@ td{padding:9px 12px;border-bottom:1px solid var(--b1);vertical-align:middle;colo
 .chat-announce-hd{font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:.08em;color:var(--or);margin-bottom:6px}
 .badge-dot{position:absolute;top:4px;right:4px;width:9px;height:9px;background:var(--red2);border-radius:50%;border:2px solid var(--black);display:none}
 .badge-dot.show{display:block}
-#chatNotif{position:fixed;top:0;left:0;right:0;z-index:9999;background:#1a1a1a;border-bottom:2px solid #C4C4C4;padding:10px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;transform:translateY(-100%);transition:transform 0.3s ease;pointer-events:none}
+#chatNotif{position:fixed;top:0;left:0;right:0;z-index:9999;background:#1a1a1a;border-bottom:2px solid #C4C4C4;padding:calc(10px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-right,0px)) 10px calc(16px + env(safe-area-inset-left,0px));display:flex;align-items:center;gap:10px;cursor:pointer;transform:translateY(-100%);transition:transform 0.3s ease;pointer-events:none}
 #chatNotif.show{transform:translateY(0);pointer-events:all}
 #chatNotif-icon{width:32px;height:32px;border-radius:50%;background:#C4C4C4;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 #chatNotif-body{flex:1;min-width:0}
 #chatNotif-label{font-size:11px;font-weight:700;color:#C4C4C4;letter-spacing:.08em;text-transform:uppercase}
 #chatNotif-msg{font-size:13px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #chatNotif-hint{font-size:11px;color:#888;flex-shrink:0}
-#filmNotif{position:fixed;top:0;left:0;right:0;z-index:9999;background:#1a1a1a;border-bottom:2px solid var(--or);padding:10px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;transform:translateY(-100%);transition:transform 0.3s ease;pointer-events:none}
+#filmNotif{position:fixed;top:0;left:0;right:0;z-index:9999;background:#1a1a1a;border-bottom:2px solid var(--or);padding:calc(10px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-right,0px)) 10px calc(16px + env(safe-area-inset-left,0px));display:flex;align-items:center;gap:10px;cursor:pointer;transform:translateY(-100%);transition:transform 0.3s ease;pointer-events:none}
 #filmNotif.show{transform:translateY(0);pointer-events:all}
 #filmNotif-icon{width:32px;height:32px;border-radius:50%;background:var(--or);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px}
 #filmNotif-body{flex:1;min-width:0}
@@ -1643,12 +1643,6 @@ function cView(v){
   if(v==='campinfo')renderCampInfoViewer('cv');
   if(v==='schedule')renderCamperSchedule();
   if(v==='clinicians')renderCliniciansPage('cvClinicianGrid');
-}
-function renderCamperHome(){
-  document.getElementById('cwname').textContent=CU.first_name+' '+CU.last_name;
-  document.getElementById('cwcity').textContent=(CU.city||'')+(CU.state?', '+CU.state:'');
-  const myE=evaluations.filter(e=>e.camper_id===CU.id);
-  document.getElementById('cse').textContent=myE.length;
 }
 async function renderCamperMyEvals(){
   const con=document.getElementById('cMyEvalsList');
