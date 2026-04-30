@@ -722,10 +722,6 @@ async function enableNotifications(){
 <div class="more-drawer" id="moreDrawerS">
   <div class="more-drawer-handle"></div>
   <div class="more-drawer-grid">
-    <button class="more-item" id="sb-liveeval" onclick="sView('liveeval');closeMoreS()" type="button">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/></svg>
-      <span>Live Eval</span>
-    </button>
     <button class="more-item" id="sb-roster" onclick="sView('roster');closeMoreS()" type="button">
       <svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="3"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/><circle cx="17" cy="7" r="3"/><path d="M21 21v-2a4 4 0 00-3-3.87"/></svg>
       <span>Roster</span>
@@ -5109,8 +5105,17 @@ function renderClinicianSchedule() {
       .map(c => c.name || (c.first_name+' '+c.last_name));
     const coClinLine = coClinNames.length ? `<div style="font-size:11px;color:var(--tx3);margin-top:4px">With ${coClinNames.join(' & ')}</div>` : '';
 
+    // My eval status for this game (this clinician's perspective)
+    const status = liveEvalGameStatus(s, evaluations);
+    const badge = status==='submitted' ? '<span style="color:var(--grn);font-size:11px;font-weight:700">✓ Submitted</span>'
+      : status==='in_progress' ? '<span style="color:var(--or);font-size:11px;font-weight:700">⏳ In progress</span>'
+      : '<span style="color:var(--tx3);font-size:11px;font-weight:700">○ Not started</span>';
+
     html += `<div class="sch-card" style="border-color:var(--or)">
-      <div class="sch-card-meta">${s.time_slot}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <div class="sch-card-meta">${s.time_slot}</div>
+        ${badge}
+      </div>
       <div class="sch-card-court">${s.court}</div>
       ${coClinLine}
       <div class="sch-card-names">
