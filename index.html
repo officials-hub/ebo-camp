@@ -591,9 +591,9 @@ async function enableNotifications(){
 <!-- CAMPER PORTAL -->
 <div class="portal" id="pCamper">
 <nav class="bnav on" id="navC">
-<button class="bb on" id="cb-home" onclick="cView('home')" type="button">
-  <div class="bb-icon"><svg viewBox="0 0 24 24"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H5a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg></div>
-  <span class="bl">Home</span>
+<button class="bb on" id="cb-campinfo" onclick="cView('campinfo')" type="button">
+  <div class="bb-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg></div>
+  <span class="bl">Camp Info</span>
 </button>
 <button class="bb" id="cb-myevals" onclick="cView('myevals')" type="button">
   <div class="bb-icon"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>
@@ -629,13 +629,9 @@ async function enableNotifications(){
       <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       Clinicians
     </button>
-    <button class="more-item" id="cb-campinfo" onclick="cView('campinfo');closeMoreC()" type="button">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
-      <span>Camp Info</span>
-    </button>
   </div>
 </div>
-<div class="view on" id="cv-home">
+<div class="view on" id="cv-campinfo">
 <div id="campAnnouncement" style="display:none;background:linear-gradient(135deg,#1a0800,#2a1000);border:1px solid var(--orb);border-radius:var(--r);padding:14px 16px;margin-bottom:12px">
   <div style="display:flex;align-items:flex-start;gap:10px">
     <span style="font-size:20px;flex-shrink:0">📢</span>
@@ -650,9 +646,12 @@ async function enableNotifications(){
 <div style="font-family:'Oswald',sans-serif;font-size:36px;color:var(--white)" id="cwname"></div>
 <div style="font-size:12px;color:var(--tx2);margin-top:3px" id="cwcity"></div>
 </div>
-<div class="sg2">
+<div class="sg2" style="margin-bottom:18px">
 <div class="sc sgrn" style="grid-column:1/-1;cursor:pointer" onclick="cView('myevals')"><div class="sn" id="cse">0</div><div class="sl">Evals Received — Tap to view</div></div>
 </div>
+<div class="stitle" style="margin-bottom:10px">CAMP <span>DOCUMENTS</span></div>
+<div id="cvCampInfoList" style="display:flex;flex-direction:column;gap:10px;margin-top:4px"></div>
+<div id="cvCampInfoEmpty" style="color:var(--tx3);font-size:13px;text-align:center;padding:32px 0">No documents posted yet.</div>
 </div>
 <div class="view" id="cv-myevals">
 <div class="stitle">MY <span>EVALUATIONS</span></div>
@@ -670,16 +669,6 @@ async function enableNotifications(){
 <div class="view" id="cv-clinicians">
 <div class="stitle" style="margin-bottom:14px">CAMP <span>CLINICIANS</span></div>
 <div id="cvClinicianGrid" style="display:flex;flex-direction:column;gap:12px"></div>
-</div>
-<div class="view" id="cv-campinfo">
-<div class="stitle">CAMP <span>INFO</span></div>
-<div id="cvCampInfoList" style="display:flex;flex-direction:column;gap:10px;margin-top:4px"></div>
-<div id="cvCampInfoEmpty" style="color:var(--tx3);font-size:13px;text-align:center;padding:32px 0">No documents posted yet.</div>
-</div>
-<div class="view" id="cv-campinfo">
-<div class="stitle">CAMP <span>INFO</span></div>
-<div id="cvCampInfoList" style="display:flex;flex-direction:column;gap:10px;margin-top:4px"></div>
-<div id="cvCampInfoEmpty" style="color:var(--tx3);font-size:13px;text-align:center;padding:32px 0">No documents posted yet.</div>
 </div>
 <div class="view" id="cv-myprofile">
 <div class="stitle">MY <span>PROFILE</span></div>
@@ -703,13 +692,13 @@ async function enableNotifications(){
   <div class="bb-icon"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
   <span class="bl">Evaluate</span>
 </button>
-<button class="bb" id="sb-history" onclick="sView('history')" type="button">
-  <div class="bb-icon"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>
-  <span class="bl">My Evals</span>
-</button>
 <button class="bb" id="sb-schedule" onclick="sView('schedule')" type="button">
   <div class="bb-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
   <span class="bl">Schedule</span>
+</button>
+<button class="bb" id="sb-campinfo" onclick="sView('campinfo')" type="button">
+  <div class="bb-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg></div>
+  <span class="bl">Camp Info</span>
 </button>
 <button class="bb" id="sb-chat" onclick="sView('chat')" type="button">
   <div class="bb-icon" style="position:relative"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span class="badge-dot" id="chatDotS" style="top:0;right:0"></span><span class="badge-dot" id="chatDotSR" style="top:0;right:10px;background:#e05a00"></span></div>
@@ -737,9 +726,9 @@ async function enableNotifications(){
       <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       Clinicians
     </button>
-    <button class="more-item" id="sb-campinfo" onclick="sView('campinfo');closeMoreS()" type="button">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
-      <span>Camp Info</span>
+    <button class="more-item" id="sb-history" onclick="sView('history');closeMoreS()" type="button">
+      <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      <span>My Evals</span>
     </button>
   </div>
 </div>
@@ -1391,6 +1380,24 @@ async function loadAll(){
     settings={};(sets||[]).forEach(s=>settings[s.key]=s.value);
     await loadChat();
   }catch(e){console.error('loadAll error:',e);}
+  // Apply settings-driven UI: announcement banner
+  try{ loadAnnouncement(); }catch(e){}
+}
+
+// Lightweight poll so an admin-edited announcement reaches campers/clinicians
+// without forcing a manual refresh. Cheap — one tiny GET every 30s.
+async function pollAnnouncement(){
+  try{
+    const sets = await supa('settings','GET',null,'?key=eq.announcement');
+    const text = (Array.isArray(sets) && sets[0]) ? (sets[0].value || '') : '';
+    if (settings.announcement !== text){
+      settings.announcement = text;
+      loadAnnouncement();
+    }
+  }catch(e){}
+}
+if (typeof window !== 'undefined' && !window._annPoller){
+  window._annPoller = setInterval(pollAnnouncement, 30000);
 }
 
 // ═══ VOICE TO TEXT (Web Speech API) ═══
@@ -1605,7 +1612,7 @@ function enterApp(){
   // Clear any stale inline display:none left over from a previously-open mProfile
   document.querySelectorAll('.bnav').forEach(n=>{n.classList.remove('on');n.style.display='';});
   document.querySelectorAll('.portal').forEach(p=>p.classList.remove('on'));
-  if(CR==='camper'){document.getElementById('pCamper').classList.add('on');document.getElementById('navC').classList.add('on');cView('home');}
+  if(CR==='camper'){document.getElementById('pCamper').classList.add('on');document.getElementById('navC').classList.add('on');cView('campinfo');}
   else if(CR==='staff'){document.getElementById('pStaff').classList.add('on');document.getElementById('navS').classList.add('on');populateStaffEvalForm();sView('evaluate');}
   else{document.getElementById('pAdmin').classList.add('on');populateAdminForms();aTab('overview',document.querySelector('.atab'));}
   startChatBackgroundPoll();
@@ -1621,14 +1628,13 @@ function cView(v){
   document.getElementById('cv-'+v).classList.add('on');
   const btn=document.getElementById('cb-'+v);if(btn)btn.classList.add('on');
   // Highlight More btn for drawer items
-  const drawerViews=['profiles','myprofile','campinfo','clinicians'];
+  const drawerViews=['profiles','myprofile','clinicians'];
   if(drawerViews.includes(v)){const mb=document.getElementById('cb-more-btn');if(mb)mb.classList.add('on');}
-  if(v==='home')renderCamperHome();
   if(v==='myevals')renderCamperMyEvals();
   if(v==='profiles'){renderCamperProfiles('');}
   if(v==='myprofile')renderMyProfile('camper');
   if(v==='chat'){markChatRead();renderChat('Camper');}
-  if(v==='campinfo')renderCampInfoViewer('cv');
+  if(v==='campinfo'){renderCamperHome();renderCampInfoViewer('cv');}
   if(v==='schedule')renderCamperSchedule();
   if(v==='clinicians')renderCliniciansPage('cvClinicianGrid');
 }
@@ -1697,7 +1703,7 @@ function sView(v){
   document.getElementById('sv-'+v).classList.add('on');
   const btn=document.getElementById('sb-'+v);if(btn)btn.classList.add('on');
   // Highlight More btn for drawer items
-  const drawerViewsS=['roster','myprofile','campinfo','clinicians','liveeval'];
+  const drawerViewsS=['roster','myprofile','clinicians','liveeval','history'];
   if(drawerViewsS.includes(v)){const mb=document.getElementById('sb-more-btn');if(mb)mb.classList.add('on');}
   if(v==='evaluate')populateStaffEvalForm();
   if(v==='history')renderStaffHistory();
