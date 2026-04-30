@@ -4684,15 +4684,27 @@ function renderAdminSchedule() {
     clinOpts += `<option value="${id}">${name}</option>`;
   });
 
-  const allSlots = getAllSlotsForDay(dayKey);
+  // Show only saved games for this day + court (uploaded or added manually)
   const courtsToRender = courtFilter ? [courtFilter] : COURTS;
-  let html = '';
-  allSlots.forEach(slot => {
-    courtsToRender.forEach(court => {
-      const existing = scheduleData.find(s => s.day === dayInfo.label && s.time_slot === slot && s.court === court);
-      const slotId = `${dayKey}_${slot.replace(/[: ]/g,'')}_${court.replace(' ','')}`;
-      
-      html += `<div class="sch-slot-row" id="row_${slotId}">
+  const dayGames = scheduleData
+    .filter(s => s.day === dayInfo.label && courtsToRender.includes(s.court))
+    .sort((a,b) => {
+      const c = COURTS.indexOf(a.court) - COURTS.indexOf(b.court);
+      if (c !== 0) return c;
+      return timeToMinutes(a.time_slot) - timeToMinutes(b.time_slot);
+    });
+
+  let html = '<button class="btn bor" style="width:100%;margin-bottom:12px;padding:12px;font-family:Oswald,sans-serif;font-size:14px;letter-spacing:.08em" onclick="openAddGameModal()" type="button">+ ADD GAME</button>';
+
+  if (!dayGames.length) {
+    html += `<div class="schedule-empty"><div class="schedule-empty-icon">📅</div><div class="schedule-empty-txt">No games on ${courtFilter} yet</div><div class="schedule-empty-sub">Tap + Add Game to create one, or upload an Excel schedule.</div></div>`;
+  }
+
+  dayGames.forEach(g => {
+    const slot = g.time_slot;
+    const court = g.court;
+    const slotId = `${dayKey}_${slot.replace(/[: ]/g,'')}_${court.replace(' ','')}`;
+    html += `<div class="sch-slot-row" id="row_${slotId}">
         <div class="sch-slot-header">
           <span class="sch-slot-title">${slot} · ${court}</span>
           <button class="btn bor bsm" onclick="saveSlot('${dayKey}','${slot}','${court}')" type="button">Save</button>
@@ -4730,37 +4742,34 @@ function renderAdminSchedule() {
         <select class="sch-select" id="cl4_${slotId}" style="width:100%;margin-top:6px">${clinOpts.replace('— Clinician —','— 4th Clinician (optional) —')}</select>
         <div id="flag_${slotId}" style="margin-top:6px"></div>
       </div>`;
-    });
   });
 
   container.innerHTML = html;
 
-  // Populate existing values
-  allSlots.forEach(slot => {
-    COURTS.forEach(court => {
-      const existing = scheduleData.find(s => s.day === dayInfo.label && s.time_slot === slot && s.court === court);
-      if (!existing) return;
-      const slotId = `${dayKey}_${slot.replace(/[: ]/g,'')}_${court.replace(' ','')}`;
-      const s1 = document.getElementById(`c1_${slotId}`);
-      const s2 = document.getElementById(`c2_${slotId}`);
-      const s3 = document.getElementById(`c3_${slotId}`);
-      const s4 = document.getElementById(`c4_${slotId}`);
-      const s5 = document.getElementById(`c5_${slotId}`);
-      const sc = document.getElementById(`cl_${slotId}`);
-      const sc2 = document.getElementById(`cl2_${slotId}`);
-      const sc3 = document.getElementById(`cl3_${slotId}`);
-      const sc4 = document.getElementById(`cl4_${slotId}`);
-      const getName = id => { const c = campers.find(x=>x.id==id); return c ? c.first_name+' '+c.last_name : ''; };
-      if (s1 && existing.camper_1_id) { s1.value = existing.camper_1_id; const ti=document.getElementById('c1i_'+slotId); if(ti) ti.value=getName(existing.camper_1_id); }
-      if (s2 && existing.camper_2_id) { s2.value = existing.camper_2_id; const ti=document.getElementById('c2i_'+slotId); if(ti) ti.value=getName(existing.camper_2_id); }
-      if (s3 && existing.camper_3_id) { s3.value = existing.camper_3_id; const ti=document.getElementById('c3i_'+slotId); if(ti) ti.value=getName(existing.camper_3_id); }
-      if (s4 && existing.camper_4_id) { s4.value = existing.camper_4_id; const ti=document.getElementById('c4i_'+slotId); if(ti) ti.value=getName(existing.camper_4_id); }
-      if (s5 && existing.camper_5_id) { s5.value = existing.camper_5_id; const ti=document.getElementById('c5i_'+slotId); if(ti) ti.value=getName(existing.camper_5_id); }
-      if (sc && existing.clinician_id) sc.value = existing.clinician_id;
-      if (sc2 && existing.clinician_2_id) sc2.value = existing.clinician_2_id;
-      if (sc3 && existing.clinician_3_id) sc3.value = existing.clinician_3_id;
-      if (sc4 && existing.clinician_4_id) sc4.value = existing.clinician_4_id;
-    });
+  // Populate existing values for the rendered games
+  dayGames.forEach(existing => {
+    const slot = existing.time_slot;
+    const court = existing.court;
+    const slotId = `${dayKey}_${slot.replace(/[: ]/g,'')}_${court.replace(' ','')}`;
+    const s1 = document.getElementById(`c1_${slotId}`);
+    const s2 = document.getElementById(`c2_${slotId}`);
+    const s3 = document.getElementById(`c3_${slotId}`);
+    const s4 = document.getElementById(`c4_${slotId}`);
+    const s5 = document.getElementById(`c5_${slotId}`);
+    const sc = document.getElementById(`cl_${slotId}`);
+    const sc2 = document.getElementById(`cl2_${slotId}`);
+    const sc3 = document.getElementById(`cl3_${slotId}`);
+    const sc4 = document.getElementById(`cl4_${slotId}`);
+    const getName = id => { const c = campers.find(x=>x.id==id); return c ? c.first_name+' '+c.last_name : ''; };
+    if (s1 && existing.camper_1_id) { s1.value = existing.camper_1_id; const ti=document.getElementById('c1i_'+slotId); if(ti) ti.value=getName(existing.camper_1_id); }
+    if (s2 && existing.camper_2_id) { s2.value = existing.camper_2_id; const ti=document.getElementById('c2i_'+slotId); if(ti) ti.value=getName(existing.camper_2_id); }
+    if (s3 && existing.camper_3_id) { s3.value = existing.camper_3_id; const ti=document.getElementById('c3i_'+slotId); if(ti) ti.value=getName(existing.camper_3_id); }
+    if (s4 && existing.camper_4_id) { s4.value = existing.camper_4_id; const ti=document.getElementById('c4i_'+slotId); if(ti) ti.value=getName(existing.camper_4_id); }
+    if (s5 && existing.camper_5_id) { s5.value = existing.camper_5_id; const ti=document.getElementById('c5i_'+slotId); if(ti) ti.value=getName(existing.camper_5_id); }
+    if (sc && existing.clinician_id) sc.value = existing.clinician_id;
+    if (sc2 && existing.clinician_2_id) sc2.value = existing.clinician_2_id;
+    if (sc3 && existing.clinician_3_id) sc3.value = existing.clinician_3_id;
+    if (sc4 && existing.clinician_4_id) sc4.value = existing.clinician_4_id;
   });
 
   updateAllFlags();
