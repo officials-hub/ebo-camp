@@ -449,6 +449,8 @@ td{padding:9px 12px;border-bottom:1px solid var(--b1);vertical-align:middle;colo
 .sch-published-badge.off{background:var(--redd);color:var(--red);border:1px solid var(--redb)}
 .sch-day-tab{padding:8px 14px;border-radius:20px;border:1px solid var(--b3);background:transparent;color:var(--tx2);font-family:'Oswald',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;text-transform:uppercase;letter-spacing:.06em}
 .sch-day-tab.on{background:var(--or);color:#fff;border-color:var(--or)}
+.sch-court-tab{flex:0 0 auto;padding:6px 14px;border-radius:18px;border:1px solid var(--b3);background:#fff;color:var(--tx2);font-family:'Source Sans 3',sans-serif;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s}
+.sch-court-tab.on{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
 .schedule-empty{text-align:center;padding:60px 20px}
 .schedule-empty-icon{font-size:52px;margin-bottom:12px}
 .schedule-empty-txt{font-family:'Oswald',sans-serif;font-size:20px;letter-spacing:.06em;color:var(--tx2);margin-bottom:8px}
@@ -998,11 +1000,14 @@ async function enableNotifications(){
 </div>
 
 <!-- Day tabs -->
-<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
   <button class="sch-day-tab on" onclick="adminSchDay('fri',this)" type="button">Fri May 1</button>
   <button class="sch-day-tab" onclick="adminSchDay('sat',this)" type="button">Sat May 2</button>
   <button class="sch-day-tab" onclick="adminSchDay('sun',this)" type="button">Sun May 3</button>
 </div>
+
+<!-- Court tabs (one court at a time keeps the grid manageable) -->
+<div id="schCourtTabs" style="display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;padding-bottom:4px"></div>
 
 <!-- Flags summary -->
 <div id="schFlagsBox" style="display:none;margin-bottom:12px"></div>
@@ -4606,6 +4611,24 @@ const PLACEHOLDER_CLINICIANS = ['Clinician 1','Clinician 2','Clinician 3','Clini
 
 let scheduleData = [];      // loaded from Supabase
 let currentAdminDay = 'fri';
+let currentAdminCourt = 'Court 1';
+
+function adminSchCourt(court, btn) {
+  currentAdminCourt = court;
+  document.querySelectorAll('#schCourtTabs .sch-court-tab').forEach(b => b.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+  renderAdminSchedule();
+}
+
+function renderCourtTabs() {
+  const wrap = document.getElementById('schCourtTabs');
+  if (!wrap) return;
+  if (!COURTS.includes(currentAdminCourt)) currentAdminCourt = COURTS[0];
+  wrap.innerHTML = COURTS.map(c => {
+    const on = c === currentAdminCourt ? 'on' : '';
+    return `<button type="button" class="sch-court-tab ${on}" onclick="adminSchCourt('${c}',this)">${c}</button>`;
+  }).join('');
+}
 
 // ── LOAD SCHEDULE ────────────────────────────────────────
 async function loadSchedule() {
@@ -4646,6 +4669,8 @@ function renderAdminSchedule() {
   const dayInfo = SCHEDULE_DAYS[dayKey];
   const container = document.getElementById('schBuilderSlots');
   if (!container) return;
+  renderCourtTabs();
+  const courtFilter = currentAdminCourt;
 
   // Build camper options
   let camperOpts = '<option value="">— Camper —</option>';
@@ -4664,9 +4689,10 @@ function renderAdminSchedule() {
   });
 
   const allSlots = getAllSlotsForDay(dayKey);
+  const courtsToRender = courtFilter ? [courtFilter] : COURTS;
   let html = '';
   allSlots.forEach(slot => {
-    COURTS.forEach(court => {
+    courtsToRender.forEach(court => {
       const existing = scheduleData.find(s => s.day === dayInfo.label && s.time_slot === slot && s.court === court);
       const slotId = `${dayKey}_${slot.replace(/[: ]/g,'')}_${court.replace(' ','')}`;
       
