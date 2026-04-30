@@ -527,6 +527,20 @@ async function enableNotifications(){
 </head>
 <body>
 <div id="toast" onclick="this.className=''"></div>
+
+<!-- First-time onboarding modal -->
+<div id="onbOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;align-items:center;justify-content:center;padding:18px">
+  <div style="background:#ffffff;border-radius:14px;max-width:440px;width:100%;max-height:90dvh;overflow-y:auto;box-shadow:0 12px 32px rgba(0,0,0,.3)">
+    <div style="background:#e05a00;padding:18px 20px;border-bottom:4px solid #1a1a1a;border-radius:14px 14px 0 0">
+      <div style="color:#ffffff;font-family:'Oswald',sans-serif;font-size:20px;font-weight:800;letter-spacing:.05em">WELCOME TO EBO CAMP</div>
+      <div style="color:#fff3e6;font-size:11px;margin-top:4px;letter-spacing:.18em;text-transform:uppercase;font-weight:700" id="onbSub">Quick tour · 30 seconds</div>
+    </div>
+    <div id="onbBody" style="padding:18px 20px;color:#1a1a1a;font-size:14px;line-height:1.55"></div>
+    <div style="padding:0 20px 18px">
+      <button onclick="dismissOnboarding()" style="width:100%;background:#e05a00;color:#fff;border:none;border-radius:8px;padding:13px;cursor:pointer;font-family:'Oswald',sans-serif;font-size:15px;font-weight:700;letter-spacing:.08em">GOT IT, LET'S GO</button>
+    </div>
+  </div>
+</div>
 <div id="chatNotif" onclick="chatNotifTap()"><div id="chatNotif-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div id="chatNotif-body"><div id="chatNotif-label">New message</div><div id="chatNotif-msg"></div></div><div id="chatNotif-hint">tap to view</div></div>
 <div id="filmNotif" onclick="filmNotifTap()"><div id="filmNotif-icon">🎥</div><div id="filmNotif-body"><div id="filmNotif-label">New game film</div><div id="filmNotif-msg">Tap to view your profile</div></div><div id="filmNotif-hint">tap to view</div></div>
 <div id="cfdlg"><div id="cfdlgbox"><div id="cfdlgtxt"></div><div id="cfdlgbtns"><button class="btn bsec" id="cfdlgno" type="button">Cancel</button><button class="btn bor" id="cfdlgyes" type="button">OK</button></div></div></div>
@@ -1432,6 +1446,70 @@ function toggleVoiceInput(taId,btnId){
   try{rec.start();}catch(e){btn.classList.remove('mic-on');btn.textContent='🎤';_voice.rec=null;_voice.active=null;toast('Could not start microphone',true);}
 }
 
+// ═══ FIRST-TIME ONBOARDING ═══
+const _onbContent = {
+  camper: {
+    sub: 'Camper · 30-second tour',
+    body: `
+      <p style="margin:0 0 12px"><strong>You're all set up.</strong> Here's what's waiting for you:</p>
+      <ul style="padding-left:18px;margin:0 0 14px">
+        <li style="margin-bottom:8px">📅 <strong>Schedule</strong> — your games + assigned clinicians, by day</li>
+        <li style="margin-bottom:8px">📋 <strong>My Evals</strong> — your evaluation results show up here as clinicians submit them</li>
+        <li style="margin-bottom:8px">💬 <strong>Chat</strong> — camp-wide announcements + Q&amp;A</li>
+        <li style="margin-bottom:8px">👥 <strong>Clinicians / Roster</strong> — see who's at camp this year</li>
+      </ul>
+      <div style="background:#fff7ec;border:1px solid #f0d9a8;border-radius:8px;padding:11px 13px;margin-bottom:12px">
+        <div style="font-weight:700;color:#8a5a00;margin-bottom:4px;font-size:12px;letter-spacing:.05em;text-transform:uppercase">🔔 Push notifications</div>
+        <div style="font-size:13px">Tap <strong>🔔 Notify</strong> in the top-right to get phone alerts for camp announcements and updates.</div>
+      </div>
+      <div style="background:#f5f0eb;border:1px solid #e0ddd8;border-radius:8px;padding:11px 13px">
+        <div style="font-weight:700;color:#1a1a1a;margin-bottom:4px;font-size:12px;letter-spacing:.05em;text-transform:uppercase">📱 iPhone? Install to home screen</div>
+        <div style="font-size:13px">Tap Share → <strong>Add to Home Screen</strong>, then open from there. Required on iPhone for notifications to work.</div>
+      </div>
+    `,
+  },
+  staff: {
+    sub: 'Clinician · 30-second tour',
+    body: `
+      <p style="margin:0 0 12px"><strong>Welcome back.</strong> Live Eval is the new fast path during games:</p>
+      <ul style="padding-left:18px;margin:0 0 14px">
+        <li style="margin-bottom:8px">📅 <strong>Schedule</strong> — your assigned games. Tap "Eval This Game" on any card to score every camper from one screen.</li>
+        <li style="margin-bottom:8px">📝 <strong>Evaluate</strong> — the legacy single-camper form, useful for catch-up evals after the game ends.</li>
+        <li style="margin-bottom:8px">📋 <strong>My Evals</strong> — every eval you've submitted; tap Edit to revise.</li>
+      </ul>
+      <div style="background:#fff7ec;border:1px solid #f0d9a8;border-radius:8px;padding:11px 13px;margin-bottom:12px">
+        <div style="font-weight:700;color:#8a5a00;margin-bottom:4px;font-size:12px;letter-spacing:.05em;text-transform:uppercase">🎤 Voice-to-text + autosave</div>
+        <div style="font-size:13px">Tap the 🎤 next to any Comments field to dictate. Live Eval autosaves every score tap and after 5s of typing, so you can step away anytime.</div>
+      </div>
+      <div style="background:#f5f0eb;border:1px solid #e0ddd8;border-radius:8px;padding:11px 13px;margin-bottom:12px">
+        <div style="font-weight:700;color:#1a1a1a;margin-bottom:4px;font-size:12px;letter-spacing:.05em;text-transform:uppercase">🔔 Push notifications</div>
+        <div style="font-size:13px">Tap <strong>🔔 Notify</strong> in the top-right for instant alerts about announcements and schedule changes.</div>
+      </div>
+      <div style="background:#f5f0eb;border:1px solid #e0ddd8;border-radius:8px;padding:11px 13px">
+        <div style="font-weight:700;color:#1a1a1a;margin-bottom:4px;font-size:12px;letter-spacing:.05em;text-transform:uppercase">📱 iPhone? Install to home screen</div>
+        <div style="font-size:13px">Tap Share → <strong>Add to Home Screen</strong>, then open from there. Required on iPhone for notifications to work.</div>
+      </div>
+    `,
+  },
+};
+function showOnboardingIfNeeded(role){
+  if (role !== 'camper' && role !== 'staff') return;
+  const key = 'eboOnboarded_' + role;
+  if (localStorage.getItem(key) === '1') return;
+  const content = _onbContent[role]; if (!content) return;
+  const overlay = document.getElementById('onbOverlay');
+  document.getElementById('onbSub').textContent = content.sub;
+  document.getElementById('onbBody').innerHTML = content.body;
+  overlay.style.display = 'flex';
+  overlay.dataset.role = role;
+}
+function dismissOnboarding(){
+  const overlay = document.getElementById('onbOverlay');
+  const role = overlay?.dataset.role;
+  if (role) localStorage.setItem('eboOnboarded_'+role, '1');
+  overlay.style.display = 'none';
+}
+
 // ═══ TOAST / CONFIRM ═══
 function toast(msg,err){const t=document.getElementById('toast');t.textContent=msg;t.className='show'+(err?' error':'');clearTimeout(t._t);t._t=setTimeout(()=>t.className='',2800);}
 let _cfR=null;
@@ -1526,6 +1604,7 @@ function enterApp(){
   else{document.getElementById('pAdmin').classList.add('on');populateAdminForms();aTab('overview',document.querySelector('.atab'));}
   startChatBackgroundPoll();
   if(CR==='camper')startFilmBackgroundPoll();
+  showOnboardingIfNeeded(CR);
 }
 
 // ═══ CAMPER PORTAL ═══
