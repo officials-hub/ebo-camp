@@ -4417,6 +4417,29 @@ function closeMoreS(){
 // ═══════════════════════════════════════════════════════
 // FEATURE 1: ANNOUNCEMENT BANNER
 // ═══════════════════════════════════════════════════════
+// Render announcement text with line breaks preserved and bullet markers
+// (-, *, •) converted to a real list. Escapes HTML so admin input can't
+// inject markup.
+function renderAnnouncementInto(target, text){
+  if (!target) return;
+  const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const lines = (text || '').split(/\r?\n/);
+  let html = '';
+  let inList = false;
+  for (const raw of lines){
+    const line = raw.trim();
+    const bullet = line.match(/^[-*•]\s+(.+)$/);
+    if (bullet){
+      if (!inList){ html += '<ul style="margin:6px 0 6px 20px;padding:0">'; inList = true; }
+      html += '<li style="margin-bottom:4px">' + esc(bullet[1]) + '</li>';
+    } else {
+      if (inList){ html += '</ul>'; inList = false; }
+      if (line) html += '<div style="margin-bottom:6px">' + esc(line) + '</div>';
+    }
+  }
+  if (inList) html += '</ul>';
+  target.innerHTML = html;
+}
 function loadAnnouncement(){
   const text = settings['announcement'] || '';
   const camperEl = document.getElementById('campAnnouncement');
@@ -4425,8 +4448,8 @@ function loadAnnouncement(){
   const staffTxt = document.getElementById('staffAnnouncementText');
   const adminInput = document.getElementById('announcementText');
   if(adminInput) adminInput.value = text;
-  if(camperEl && camperTxt){ camperEl.style.display = text ? '' : 'none'; camperTxt.textContent = text; }
-  if(staffEl && staffTxt){ staffEl.style.display = text ? '' : 'none'; staffTxt.textContent = text; }
+  if(camperEl && camperTxt){ camperEl.style.display = text ? '' : 'none'; renderAnnouncementInto(camperTxt, text); }
+  if(staffEl && staffTxt){ staffEl.style.display = text ? '' : 'none'; renderAnnouncementInto(staffTxt, text); }
 }
 async function saveAnnouncement(){
   const text = document.getElementById('announcementText')?.value?.trim() || '';
