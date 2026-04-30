@@ -502,11 +502,21 @@ async function refreshNotifyBtnState(){
   try{
     if(!('serviceWorker' in navigator)||!('PushManager' in window)) return;
     if(typeof Notification==='undefined'||Notification.permission!=='granted') return;
-    if(!_swReg)_swReg=await navigator.serviceWorker.ready;
-    const sub=await _swReg.pushManager.getSubscription();
-    if(sub){btn.textContent='🔔 On';btn.disabled=true;}
-    else{btn.textContent='🔔 Notify';btn.disabled=false;}
+    // Avoid navigator.serviceWorker.ready — on first visit it hangs until the
+    // SW takes control. getRegistration resolves immediately if we have one.
+    let reg = _swReg || await navigator.serviceWorker.getRegistration();
+    if (!reg) return;
+    _swReg = reg;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub){ btn.textContent='🔔 On'; btn.disabled=true; }
+    else { btn.textContent='🔔 Notify'; btn.disabled=false; }
   }catch(e){}
+}
+// Also refresh once the SW finishes registering on first visit, in case
+// enterApp ran before the registration resolved.
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator){
+  navigator.serviceWorker.getRegistration().then(()=>refreshNotifyBtnState()).catch(()=>{});
+  window.addEventListener('load', ()=>{ setTimeout(refreshNotifyBtnState, 500); });
 }
 async function enableNotifications(){
   try{
