@@ -4903,19 +4903,21 @@ async function saveSlot(dayKey, slot, court) {
 // ── VALIDATE A SLOT ─────────────────────────────────────
 function validateSlot(day, slot, court, c1, c2, c3, c4, cl, excludeId, c5) {
   const flags = [];
-  const camperIds = [c1, c2, c3, c4, c5].filter(Boolean);
+  const camperIds = [c1, c2, c3, c4, c5].filter(Boolean).map(String);
   const slotMinutes = timeToMinutes(slot);
+  // Normalize cl — caller may pass a string (from <select>.value) or a number (from DB)
+  const clStr = cl != null && cl !== '' ? String(cl) : null;
 
   // Get all slots for this day (excluding current)
   const daySlots = scheduleData.filter(s => s.day === day && s.id !== excludeId);
 
   camperIds.forEach(cid => {
-    const camper = campers.find(c => c.id === cid);
+    const camper = campers.find(c => String(c.id) === cid);
     const name = camper ? camper.first_name + ' ' + camper.last_name : 'Camper';
 
     // Count games today
     const todayGames = daySlots.filter(s =>
-      s.camper_1_id === cid || s.camper_2_id === cid || s.camper_3_id === cid || s.camper_4_id === cid || s.camper_5_id === cid
+      String(s.camper_1_id) === cid || String(s.camper_2_id) === cid || String(s.camper_3_id) === cid || String(s.camper_4_id) === cid || String(s.camper_5_id) === cid
     );
 
     if (todayGames.length >= 3) {
@@ -4932,14 +4934,14 @@ function validateSlot(day, slot, court, c1, c2, c3, c4, cl, excludeId, c5) {
   });
 
   // Clinician: same camper twice check
-  if (cl && !cl.startsWith('ph_')) {
-    const clinGames = daySlots.filter(s => s.clinician_id === cl);
+  if (clStr && !clStr.startsWith('ph_')) {
+    const clinGames = daySlots.filter(s => String(s.clinician_id) === clStr);
     camperIds.forEach(cid => {
       const seenCount = clinGames.filter(s =>
-        s.camper_1_id === cid || s.camper_2_id === cid || s.camper_3_id === cid || s.camper_4_id === cid || s.camper_5_id === cid
+        String(s.camper_1_id) === cid || String(s.camper_2_id) === cid || String(s.camper_3_id) === cid || String(s.camper_4_id) === cid || String(s.camper_5_id) === cid
       ).length;
       if (seenCount >= 2) {
-        const camper = campers.find(c => c.id === cid);
+        const camper = campers.find(c => String(c.id) === cid);
         const name = camper ? camper.first_name + ' ' + camper.last_name : 'this camper';
         flags.push({ type: 'error', msg: `Clinician has already seen ${name} twice today` });
       }
@@ -4962,19 +4964,19 @@ function validateSlot(day, slot, court, c1, c2, c3, c4, cl, excludeId, c5) {
   const sameTimeOtherCourts = daySlots.filter(s => s.time_slot === slot && s.court !== court);
   camperIds.forEach(cid => {
     sameTimeOtherCourts.forEach(other => {
-      const otherCampers = [other.camper_1_id, other.camper_2_id, other.camper_3_id, other.camper_4_id, other.camper_5_id];
-      if (otherCampers.some(x => String(x) === String(cid))) {
-        const camper = campers.find(c => c.id === cid);
+      const otherCampers = [other.camper_1_id, other.camper_2_id, other.camper_3_id, other.camper_4_id, other.camper_5_id].map(String);
+      if (otherCampers.some(x => x === cid)) {
+        const camper = campers.find(c => String(c.id) === cid);
         const name = camper ? camper.first_name + ' ' + camper.last_name : 'Camper';
         flags.push({ type: 'error', msg: `${name} is also assigned to ${other.court} at ${slot}` });
       }
     });
   });
-  if (cl && !cl.startsWith('ph_')) {
+  if (clStr && !clStr.startsWith('ph_')) {
     sameTimeOtherCourts.forEach(other => {
-      const otherClins = [other.clinician_id, other.clinician_2_id, other.clinician_3_id, other.clinician_4_id];
-      if (otherClins.some(x => String(x) === String(cl))) {
-        const clObj = clinicians.find(c => String(c.id) === String(cl));
+      const otherClins = [other.clinician_id, other.clinician_2_id, other.clinician_3_id, other.clinician_4_id].map(x => x == null ? '' : String(x));
+      if (otherClins.some(x => x === clStr)) {
+        const clObj = clinicians.find(c => String(c.id) === clStr);
         const name = clObj ? clObj.name : 'Clinician';
         flags.push({ type: 'error', msg: `${name} is also assigned to ${other.court} at ${slot}` });
       }
@@ -5626,15 +5628,18 @@ async function downloadScheduleTemplate() {
   const wb = new ExcelJS.Workbook();
   const sheet = wb.addWorksheet('Schedule');
   sheet.columns = [
-    { header: 'Day',       key: 'day',   width: 24 },
-    { header: 'Time',      key: 'time',  width: 12 },
-    { header: 'Court',     key: 'court', width: 10 },
-    { header: 'Camper 1',  key: 'c1',    width: 22 },
-    { header: 'Camper 2',  key: 'c2',    width: 22 },
-    { header: 'Camper 3',  key: 'c3',    width: 22 },
-    { header: 'Camper 4',  key: 'c4',    width: 22 },
-    { header: 'Camper 5',  key: 'c5',    width: 22 },
-    { header: 'Clinician', key: 'cl',    width: 22 }
+    { header: 'Day',         key: 'day',   width: 24 },
+    { header: 'Time',        key: 'time',  width: 12 },
+    { header: 'Court',       key: 'court', width: 10 },
+    { header: 'Camper 1',    key: 'c1',    width: 22 },
+    { header: 'Camper 2',    key: 'c2',    width: 22 },
+    { header: 'Camper 3',    key: 'c3',    width: 22 },
+    { header: 'Camper 4',    key: 'c4',    width: 22 },
+    { header: 'Camper 5',    key: 'c5',    width: 22 },
+    { header: 'Clinician',   key: 'cl',    width: 22 },
+    { header: 'Clinician 2', key: 'cl2',   width: 22 },
+    { header: 'Clinician 3', key: 'cl3',   width: 22 },
+    { header: 'Clinician 4', key: 'cl4',   width: 22 }
   ];
   sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
   sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F1F1F' } };
@@ -5645,7 +5650,7 @@ async function downloadScheduleTemplate() {
     const slots = blocks.all || [...(blocks.am||[]), ...(blocks.pm||[])];
     slots.forEach(time => {
       SCH_COURTS.forEach(court => {
-        sheet.addRow({ day, time, court, c1: '', c2: '', c3: '', c4: '', c5: '', cl: '' });
+        sheet.addRow({ day, time, court, c1: '', c2: '', c3: '', c4: '', c5: '', cl: '', cl2: '', cl3: '', cl4: '' });
         rowCount++;
       });
     });
@@ -5673,14 +5678,17 @@ async function downloadScheduleTemplate() {
     });
   }
   if (clinList.length) {
-    sheet.dataValidations.add(`I2:I${lastRow}`, {
-      type: 'list',
-      allowBlank: true,
-      formulae: [`Lists!$B$1:$B$${clinList.length}`],
-      showErrorMessage: true,
-      errorStyle: 'stop',
-      errorTitle: 'Invalid clinician',
-      error: 'Choose a clinician from the dropdown.'
+    const clinRef = `Lists!$B$1:$B$${clinList.length}`;
+    ['I','J','K','L'].forEach(col => {
+      sheet.dataValidations.add(`${col}2:${col}${lastRow}`, {
+        type: 'list',
+        allowBlank: true,
+        formulae: [clinRef],
+        showErrorMessage: true,
+        errorStyle: 'stop',
+        errorTitle: 'Invalid clinician',
+        error: 'Choose a clinician from the dropdown.'
+      });
     });
   }
 
