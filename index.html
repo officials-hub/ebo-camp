@@ -1923,8 +1923,11 @@ function renderLiveEvalGameList(){
   _liveEval._gameList = myGames;
 }
 
-async function openLiveEvalGame(idx){
-  const g = _liveEval._gameList?.[idx]; if (!g){renderLiveEvalGameList();return;}
+async function openLiveEvalGame(rowOrIdx){
+  // Accept either an index into the cached game list (for in-Live-Eval taps)
+  // or a full schedule row (for direct entry from My Schedule).
+  const g = (rowOrIdx && typeof rowOrIdx === 'object') ? rowOrIdx : _liveEval._gameList?.[rowOrIdx];
+  if (!g){renderLiveEvalGameList();return;}
   const matched = findMatchingClinician();
   const date = SCH_DAY_TO_DATE[g.day] || null;
   const camperIds=[g.camper_1_id,g.camper_2_id,g.camper_3_id,g.camper_4_id,g.camper_5_id].filter(Boolean);
@@ -2225,6 +2228,15 @@ async function liveEvalSubmit(){
     toast('Submit failed — try again', true);
     if (btn){ btn.disabled=false; btn.textContent='SUBMIT EVALUATIONS'; }
   }
+}
+
+function openLiveEvalFromSchedule(scheduleId){
+  const row = scheduleData.find(s => String(s.id)===String(scheduleId));
+  if (!row){ toast('Game not found', true); return; }
+  // Switch to the Live Eval view, then open this game directly
+  sView('liveeval');
+  // Defer one tick so the view is in the DOM before we render
+  setTimeout(() => openLiveEvalGame(row), 0);
 }
 
 function liveEvalEditExisting(camperId){
@@ -4984,21 +4996,29 @@ function renderClinicianSchedule() {
       return c ? c.first_name + ' ' + c.last_name : '';
     }).filter(Boolean);
 
-    const firstCamperId = camperIds[0] || '';
-    html += `<div class="sch-card" style="cursor:pointer;border-color:var(--or);opacity:0.95;transition:opacity .15s" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.95'">
+    // Co-clinician names (everyone on this game except the logged-in clinician)
+    const coClinNames = [s.clinician_id, s.clinician_2_id, s.clinician_3_id, s.clinician_4_id]
+      .filter(id => id && String(id) !== String(clinId))
+      .map(id => clinicians.find(x => x.id === id))
+      .filter(Boolean)
+      .map(c => c.name || (c.first_name+' '+c.last_name));
+    const coClinLine = coClinNames.length ? `<div style="font-size:11px;color:var(--tx3);margin-top:4px">With ${coClinNames.join(' & ')}</div>` : '';
+
+    html += `<div class="sch-card" style="border-color:var(--or)">
       <div class="sch-card-meta">${s.time_slot}</div>
       <div class="sch-card-court">${s.court}</div>
+      ${coClinLine}
       <div class="sch-card-names">
-        ${camperIds.map((id, i) => {
+        ${camperIds.map(id => {
           const c = campers.find(x => x.id === id);
           const name = c ? c.first_name + ' ' + c.last_name : '';
           const ctx = `${s.court}|${s.time_slot}|${s.day}`;
-          return name ? `<div class="sch-card-name" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-            <span onclick="event.stopPropagation();openCamperProfile('${id}','${ctx}')" style="cursor:pointer;text-decoration:underline;text-decoration-color:var(--or);text-decoration-thickness:1px;text-underline-offset:3px;flex:1">${name}</span>
-            <button onclick="event.stopPropagation();openEvalFromSchedule('${id}','${s.court}','${s.time_slot}','${s.day}')" style="background:var(--or);color:#fff;border:none;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.08em;padding:4px 10px;cursor:pointer;font-family:Oswald,sans-serif;text-transform:uppercase;flex-shrink:0">Eval</button>
+          return name ? `<div class="sch-card-name">
+            <span onclick="event.stopPropagation();openCamperProfile('${id}','${ctx}')" style="cursor:pointer;text-decoration:underline;text-decoration-color:var(--or);text-decoration-thickness:1px;text-underline-offset:3px">${name}</span>
           </div>` : '';
         }).filter(Boolean).join('')}
       </div>
+      <button onclick="openLiveEvalFromSchedule('${s.id}')" style="display:block;width:100%;margin-top:10px;background:var(--or);color:#fff;border:none;border-radius:8px;padding:12px;cursor:pointer;font-family:Oswald,sans-serif;font-size:14px;font-weight:700;letter-spacing:.08em;text-transform:uppercase">📋 Eval This Game</button>
     </div>`;
   });
 
