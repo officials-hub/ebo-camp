@@ -314,8 +314,8 @@ td{padding:9px 12px;border-bottom:1px solid var(--b1);vertical-align:middle;colo
 .email-pend{background:var(--ord);color:var(--or);padding:8px 12px;border-radius:var(--rs);font-size:13px;margin-bottom:6px}
 
 /* TOAST */
-#toast{position:fixed;bottom:calc(80px + var(--safe));left:50%;transform:translateX(-50%) translateY(120px);background:var(--grn);color:#fff;padding:12px 24px;border-radius:10px;font-family:'Oswald',sans-serif;font-size:14px;letter-spacing:.06em;z-index:300;transition:transform .3s ease;pointer-events:none;max-width:90vw;text-align:center;cursor:pointer}
-#toast.show{transform:translateX(-50%) translateY(0);pointer-events:auto}
+#toast{position:fixed;bottom:calc(80px + var(--safe));left:50%;transform:translateX(-50%) translateY(calc(140px + var(--safe)));background:var(--grn);color:#fff;padding:12px 24px;border-radius:10px;font-family:'Oswald',sans-serif;font-size:14px;letter-spacing:.06em;z-index:300;transition:transform .3s ease;pointer-events:none;max-width:90vw;text-align:center;cursor:pointer;opacity:0}
+#toast.show{transform:translateX(-50%) translateY(0);pointer-events:auto;opacity:1}
 #toast.error{background:var(--red)}
 
 /* CONFIRM DIALOG */
@@ -1464,8 +1464,9 @@ const _onbContent = {
         <div style="font-size:13px">Tap <strong>🔔 Notify</strong> in the top-right to get phone alerts for camp announcements and updates.</div>
       </div>
       <div style="background:#f5f0eb;border:1px solid #e0ddd8;border-radius:8px;padding:11px 13px">
-        <div style="font-weight:700;color:#1a1a1a;margin-bottom:4px;font-size:12px;letter-spacing:.05em;text-transform:uppercase">📱 iPhone? Install to home screen</div>
-        <div style="font-size:13px">Tap Share → <strong>Add to Home Screen</strong>, then open from there. Required on iPhone for notifications to work.</div>
+        <div style="font-weight:700;color:#1a1a1a;margin-bottom:4px;font-size:12px;letter-spacing:.05em;text-transform:uppercase">📱 Install to home screen</div>
+        <div style="font-size:13px;margin-bottom:6px"><strong>iPhone (Safari):</strong> tap Share → <strong>Add to Home Screen</strong>, then open from there. Required for notifications.</div>
+        <div style="font-size:13px"><strong>Android (Chrome):</strong> tap the ⋮ menu → <strong>Install app</strong> (or Add to Home screen), then open from there.</div>
       </div>
     `,
   },
@@ -1487,8 +1488,9 @@ const _onbContent = {
         <div style="font-size:13px">Tap <strong>🔔 Notify</strong> in the top-right for instant alerts about announcements and schedule changes.</div>
       </div>
       <div style="background:#f5f0eb;border:1px solid #e0ddd8;border-radius:8px;padding:11px 13px">
-        <div style="font-weight:700;color:#1a1a1a;margin-bottom:4px;font-size:12px;letter-spacing:.05em;text-transform:uppercase">📱 iPhone? Install to home screen</div>
-        <div style="font-size:13px">Tap Share → <strong>Add to Home Screen</strong>, then open from there. Required on iPhone for notifications to work.</div>
+        <div style="font-weight:700;color:#1a1a1a;margin-bottom:4px;font-size:12px;letter-spacing:.05em;text-transform:uppercase">📱 Install to home screen</div>
+        <div style="font-size:13px;margin-bottom:6px"><strong>iPhone (Safari):</strong> tap Share → <strong>Add to Home Screen</strong>, then open from there. Required for notifications.</div>
+        <div style="font-size:13px"><strong>Android (Chrome):</strong> tap the ⋮ menu → <strong>Install app</strong> (or Add to Home screen), then open from there.</div>
       </div>
     `,
   },
