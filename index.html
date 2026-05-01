@@ -5151,28 +5151,31 @@ function renderCamperSchedule() {
       lastDay = s.day;
     }
 
-    // Get partner names
+    // Get partner names (with ids so they can be clicked through to profile)
     const allIds = [s.camper_1_id, s.camper_2_id, s.camper_3_id, s.camper_4_id, s.camper_5_id].filter(Boolean);
     const partners = allIds.filter(id => id !== CU.id).map(id => {
       const c = campers.find(x => x.id === id);
-      return c ? c.first_name + ' ' + c.last_name : '';
+      return c ? {id, name: c.first_name + ' ' + c.last_name} : null;
     }).filter(Boolean);
 
-    // Clinician name(s) — show all up to four
-    const clinNames = [s.clinician_id, s.clinician_2_id, s.clinician_3_id, s.clinician_4_id]
+    // Clinician name(s) — show all up to four, keep ids for click-through
+    const clins = [s.clinician_id, s.clinician_2_id, s.clinician_3_id, s.clinician_4_id]
       .map(id => clinicians.find(x => x.id === id))
       .filter(Boolean)
-      .map(cl => cl.name || (cl.first_name + ' ' + cl.last_name));
-    const clinName = clinNames.join(' & ');
+      .map(cl => ({id: cl.id, name: cl.name || (cl.first_name + ' ' + cl.last_name)}));
+    const linkStyle = 'cursor:pointer;text-decoration:underline;text-decoration-color:var(--or);text-decoration-thickness:1px;text-underline-offset:3px';
+    const clinHtml = clins.map(cl =>
+      `<span onclick="event.stopPropagation();openClinicianDetail('${cl.id}')" style="${linkStyle}">${cl.name}</span>`
+    ).join(' &amp; ');
 
     html += `<div class="sch-card">
       <div class="sch-card-meta">${s.time_slot}</div>
       <div class="sch-card-court">${s.court}</div>
       <div class="sch-card-names">
         <div class="sch-card-name" style="color:var(--or)">${CU.first_name} ${CU.last_name}</div>
-        ${partners.map(p => `<div class="sch-card-name">${p}</div>`).join('')}
+        ${partners.map(p => `<div class="sch-card-name"><span onclick="event.stopPropagation();openCamperProfile('${p.id}')" style="${linkStyle}">${p.name}</span></div>`).join('')}
       </div>
-      ${clinName ? `<div class="sch-card-clinician">Clinician: ${clinName}</div>` : ''}
+      ${clinHtml ? `<div class="sch-card-clinician">Clinician: ${clinHtml}</div>` : ''}
     </div>`;
   });
 
