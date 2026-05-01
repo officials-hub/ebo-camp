@@ -4988,90 +4988,8 @@ async function saveSlot(dayKey, slot, court) {
 }
 
 // ── VALIDATE A SLOT ─────────────────────────────────────
-function validateSlot(day, slot, court, c1, c2, c3, c4, cl, excludeId, c5) {
-  const flags = [];
-  const camperIds = [c1, c2, c3, c4, c5].filter(Boolean).map(String);
-  const slotMinutes = timeToMinutes(slot);
-  // Normalize cl — caller may pass a string (from <select>.value) or a number (from DB)
-  const clStr = cl != null && cl !== '' ? String(cl) : null;
-
-  // Get all slots for this day (excluding current)
-  const daySlots = scheduleData.filter(s => s.day === day && s.id !== excludeId);
-
-  camperIds.forEach(cid => {
-    const camper = campers.find(c => String(c.id) === cid);
-    const name = camper ? camper.first_name + ' ' + camper.last_name : 'Camper';
-
-    // Count games today
-    const todayGames = daySlots.filter(s =>
-      String(s.camper_1_id) === cid || String(s.camper_2_id) === cid || String(s.camper_3_id) === cid || String(s.camper_4_id) === cid || String(s.camper_5_id) === cid
-    );
-
-    if (todayGames.length >= 3) {
-      flags.push({ type: 'error', msg: `${name} already has 3 games today (max reached)` });
-    }
-
-    // Back-to-back check
-    todayGames.forEach(s => {
-      const diff = Math.abs(timeToMinutes(s.time_slot) - slotMinutes);
-      if (diff === 60) {
-        flags.push({ type: 'error', msg: `${name} has a back-to-back game at ${s.time_slot}` });
-      }
-    });
-  });
-
-  // Clinician: same camper twice check
-  if (clStr && !clStr.startsWith('ph_')) {
-    const clinGames = daySlots.filter(s => String(s.clinician_id) === clStr);
-    camperIds.forEach(cid => {
-      const seenCount = clinGames.filter(s =>
-        String(s.camper_1_id) === cid || String(s.camper_2_id) === cid || String(s.camper_3_id) === cid || String(s.camper_4_id) === cid || String(s.camper_5_id) === cid
-      ).length;
-      if (seenCount >= 2) {
-        const camper = campers.find(c => String(c.id) === cid);
-        const name = camper ? camper.first_name + ' ' + camper.last_name : 'this camper';
-        flags.push({ type: 'error', msg: `Clinician has already seen ${name} twice today` });
-      }
-    });
-
-    // Clinician on/off rotation check (guideline)
-    const clinSlots = clinGames.map(s => timeToMinutes(s.time_slot)).sort((a,b)=>a-b);
-    if (clinSlots.length >= 2) {
-      let consecutive = false;
-      for (let i = 0; i < clinSlots.length - 1; i++) {
-        if (clinSlots[i+1] - clinSlots[i] === 60) { consecutive = true; break; }
-      }
-      if (consecutive) {
-        flags.push({ type: 'warn', msg: `Clinician has consecutive games (rotation guideline)` });
-      }
-    }
-  }
-
-  // Same-time, different-court conflicts (double-booking)
-  const sameTimeOtherCourts = daySlots.filter(s => s.time_slot === slot && s.court !== court);
-  camperIds.forEach(cid => {
-    sameTimeOtherCourts.forEach(other => {
-      const otherCampers = [other.camper_1_id, other.camper_2_id, other.camper_3_id, other.camper_4_id, other.camper_5_id].map(String);
-      if (otherCampers.some(x => x === cid)) {
-        const camper = campers.find(c => String(c.id) === cid);
-        const name = camper ? camper.first_name + ' ' + camper.last_name : 'Camper';
-        flags.push({ type: 'error', msg: `${name} is also assigned to ${other.court} at ${slot}` });
-      }
-    });
-  });
-  if (clStr && !clStr.startsWith('ph_')) {
-    sameTimeOtherCourts.forEach(other => {
-      const otherClins = [other.clinician_id, other.clinician_2_id, other.clinician_3_id, other.clinician_4_id].map(x => x == null ? '' : String(x));
-      if (otherClins.some(x => x === clStr)) {
-        const clObj = clinicians.find(c => String(c.id) === clStr);
-        const name = clObj ? clObj.name : 'Clinician';
-        flags.push({ type: 'error', msg: `${name} is also assigned to ${other.court} at ${slot}` });
-      }
-    });
-  }
-
-  return flags;
-}
+// Scheduling rules removed by request — admins now have full discretion.
+function validateSlot() { return []; }
 
 // ── UPDATE ALL FLAGS (admin view) ────────────────────────
 function updateAllFlags() {
@@ -5532,53 +5450,7 @@ async function generateSchedule() {
 }
 
 // ── VALIDATE GENERATED ────────────────────────────────
-function validateGeneratedSchedule(slots, campersAll) {
-  const warnings = [];
-  const days = [...new Set(slots.map(s=>s.day))];
-
-  days.forEach(day => {
-    const daySlots = slots.filter(s=>s.day===day);
-
-    // Check each camper's games per day
-    campersAll.forEach(c => {
-      const games = daySlots.filter(s=>s.camper_1_id===c.id||s.camper_2_id===c.id||s.camper_3_id===c.id||s.camper_4_id===c.id||s.camper_5_id===c.id);
-      const name = c.first_name+' '+c.last_name;
-      if (games.length < 2) warnings.push({type:'warn', msg:`${name} has only ${games.length} game(s) on ${day}`});
-      if (games.length > 5) warnings.push({type:'warn', msg:`${name} has ${games.length} games on ${day} (heavy load)`});
-      // Check back-to-back
-      const times = games.map(g=>tmins(g.time_slot)).sort((a,b)=>a-b);
-      for (let i=0;i<times.length-1;i++) {
-        if (times[i+1]-times[i]===60) warnings.push({type:'error', msg:`${name} has back-to-back games on ${day}`});
-      }
-      // Same-time, different-court double-bookings
-      const byTime = {};
-      games.forEach(g => { (byTime[g.time_slot] = byTime[g.time_slot] || []).push(g.court); });
-      Object.entries(byTime).forEach(([t, courts]) => {
-        if (courts.length > 1) warnings.push({type:'error', msg:`${name} is double-booked at ${t} on ${day} (${courts.join(', ')})`});
-      });
-    });
-
-    // Clinician double-bookings at the same time
-    const clinIdSet = new Set();
-    daySlots.forEach(s => {
-      [s.clinician_id, s.clinician_2_id, s.clinician_3_id, s.clinician_4_id].forEach(id => { if (id) clinIdSet.add(id); });
-    });
-    clinIdSet.forEach(cid => {
-      const games = daySlots.filter(s => [s.clinician_id, s.clinician_2_id, s.clinician_3_id, s.clinician_4_id].some(x => x === cid));
-      const byTime = {};
-      games.forEach(g => { (byTime[g.time_slot] = byTime[g.time_slot] || []).push(g.court); });
-      Object.entries(byTime).forEach(([t, courts]) => {
-        if (courts.length > 1) {
-          const clObj = (typeof clinicians !== 'undefined') ? clinicians.find(c => String(c.id) === String(cid)) : null;
-          const clName = clObj ? (clObj.name || (clObj.first_name+' '+clObj.last_name)) : `Clinician (id ${cid})`;
-          warnings.push({type:'error', msg:`${clName} is double-booked at ${t} on ${day} (${courts.join(', ')})`});
-        }
-      });
-    });
-  });
-
-  return warnings;
-}
+function validateGeneratedSchedule() { return []; }
 
 // ── PREVIEW MODAL ─────────────────────────────────────
 function showGeneratedPreview(generated, campersAll, clinAll, warnings) {
@@ -5594,7 +5466,7 @@ function showGeneratedPreview(generated, campersAll, clinAll, warnings) {
     ).join('');
     html += '<div style="margin-bottom:12px"></div>';
   } else {
-    html += '<div class="sch-warn" style="background:var(--grnd);border-color:var(--grnb);color:var(--grn)">✅ Schedule generated with no violations!</div>';
+    html += '<div class="sch-warn" style="background:var(--grnd);border-color:var(--grnb);color:var(--grn)">✅ Schedule generated</div>';
   }
 
   html += `<div style="font-size:13px;color:var(--tx2);margin-bottom:12px">${generated.length} slots generated across 3 days</div>`;
