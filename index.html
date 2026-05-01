@@ -1338,7 +1338,7 @@ const CFG={
   CAMP_NAME:'Elevate Basketball Officiating Camp',
   CATS:['Mechanics','Lead Position','Trail Position','Center Position','Game Management','Communication','Consistency / Judgement'],
   SCALE_MAX:4,
-  SCALE_LABELS:{1:'Needs Work',2:'Developing',3:'Proficient',4:'Excellent'}
+  SCALE_LABELS:{1:'Below Expectations',2:'Approaching Expectations',3:'Meets Expectations',4:'Exceeds Expectations'}
 };
 function catKey(cat){return (cat||'').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');}
 function scoreColor(v){return v>=3?'var(--grn)':v>=2?'var(--or)':'var(--red2)';}
