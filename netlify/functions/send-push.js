@@ -2,9 +2,11 @@
  * EBO Camp — Web Push Send Function
  *
  * POST /.netlify/functions/send-push
- *   { title, body, url?, tag?, audience? }
+ *   { title, body, url?, tag?, user_id?, user_ids? }
  *
- * audience: 'all' (default) — fans out to every row in push_subscriptions.
+ * If user_id (string) or user_ids (array) is provided, the push fans out only
+ * to push_subscriptions rows for those user(s). With neither, fans out to all
+ * subscribers (broadcast).
  *
  * Env vars (set in Netlify dashboard):
  *   VAPID_PUBLIC_KEY
@@ -47,7 +49,7 @@ exports.handler = async (event) => {
     return resp(400, { ok: false, error: 'Invalid JSON body' });
   }
 
-  const { title, body, url, tag } = payload;
+  const { title, body, url, tag, user_id, user_ids } = payload;
   if (!title || !body) return resp(400, { ok: false, error: 'Missing title or body' });
 
   const supaHeaders = {
@@ -55,7 +57,21 @@ exports.handler = async (event) => {
     Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
   };
 
-  const subsRes = await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions?select=id,endpoint,p256dh,auth`, {
+  // Build user-scoped filter if requested. Otherwise broadcast to everyone.
+  const targetIds = []
+    .concat(user_id ? [user_id] : [])
+    .concat(Array.isArray(user_ids) ? user_ids : [])
+    .map((x) => String(x))
+    .filter(Boolean);
+  let filter = '';
+  if (targetIds.length === 1) {
+    filter = `&user_id=eq.${encodeURIComponent(targetIds[0])}`;
+  } else if (targetIds.length > 1) {
+    const list = targetIds.map((id) => `"${id}"`).join(',');
+    filter = `&user_id=in.(${encodeURIComponent(list)})`;
+  }
+
+  const subsRes = await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions?select=id,endpoint,p256dh,auth${filter}`, {
     headers: supaHeaders,
   });
   if (!subsRes.ok) {

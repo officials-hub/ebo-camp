@@ -54,7 +54,7 @@ exports.handler = async (event) => {
     };
   }
 
-  let { to, from, subject, html, fromName } = payload;
+  let { to, from, subject, html, fromName, attachments } = payload;
 
   // Strip stray `mailto:` prefix and whitespace — happens when emails are
   // pasted from hyperlinks. Resend rejects `mailto:foo@bar.com` with 422.
@@ -96,6 +96,7 @@ exports.handler = async (event) => {
         subject,
         html,
         ...(replyTo ? { reply_to: replyTo } : {}),
+        ...(Array.isArray(attachments) && attachments.length ? { attachments } : {}),
       }),
     });
 
