@@ -1072,9 +1072,13 @@ async function enableNotifications(){
 <div class="tc" id="at-evaltracker">
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
   <div class="stitle" style="margin:0">EVAL <span>TRACKER</span></div>
-  <button class="btn bor bsm" onclick="renderEvalTracker()" type="button">🔄 Refresh</button>
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+    <button class="btn bsec bsm" onclick="remindAllUnfinishedClinicians()" type="button">🔔 Remind All</button>
+    <button class="btn bor bsm" onclick="renderEvalTracker()" type="button">🔄 Refresh</button>
+  </div>
 </div>
 <div id="etSummary" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px"></div>
+<div id="etClinicianPanel" style="margin-bottom:18px"></div>
 <div style="margin-bottom:10px">
   <div style="display:flex;gap:6px;flex-wrap:wrap">
     <button class="fchip on" id="etf-all" onclick="setEvalFilter('all',this)">All Campers</button>
@@ -1997,6 +2001,168 @@ function liveEvalGameStatus(scheduleRow, allEvals){
 }
 
 const SCH_DAY_TO_DATE = {'Friday May 1, 2026':'2026-05-01','Saturday May 2, 2026':'2026-05-02','Sunday May 3, 2026':'2026-05-03'};
+
+// ── CLINICIAN EVAL PROGRESS ─────────────────────────────
+// For an eval-tracker-by-clinician view + reminders. Returns total assigned
+// games for a clinician name, how many they've fully submitted, and the
+// subset whose scheduled start time is at least 60 min in the past (i.e.
+// games that should have been evaluated by now).
+function clinicianEvalProgress(clinicianName, opts){
+  const slotPastMin = (opts && opts.slotPastMin) != null ? opts.slotPastMin : 60;
+  const now = new Date();
+  const norm = s => (s||'').trim().toLowerCase().replace(/\s+/g,' ');
+  const target = norm(clinicianName);
+  // Find every clinician id that matches this name (defensive — usually 1).
+  const clIds = clinicians.filter(c => norm(c.name) === target).map(c => String(c.id));
+  if (!clIds.length) return { totalAssigned: 0, totalSubmitted: 0, totalPast: 0, missingPast: 0, missingPastSlots: [] };
+  let totalAssigned = 0, totalSubmitted = 0, totalPast = 0, missingPast = 0;
+  const missingPastSlots = [];
+  for (const s of scheduleData) {
+    const assignedClins = [s.clinician_id, s.clinician_2_id, s.clinician_3_id, s.clinician_4_id]
+      .filter(Boolean).map(String);
+    if (!assignedClins.some(id => clIds.includes(id))) continue;
+    const camperIds = [s.camper_1_id, s.camper_2_id, s.camper_3_id, s.camper_4_id, s.camper_5_id].filter(Boolean);
+    if (!camperIds.length) continue;
+    totalAssigned++;
+    const date = SCH_DAY_TO_DATE[s.day] || null;
+    const slotEvals = evaluations.filter(e =>
+      e.clinician_name === clinicianName &&
+      e.eval_date === date &&
+      e.court === s.court &&
+      e.eval_time === s.time_slot
+    );
+    const allSubmitted = camperIds.every(cid => slotEvals.find(e => String(e.camper_id) === String(cid) && e.status === 'submitted'));
+    if (allSubmitted) totalSubmitted++;
+    // Decide whether the slot is "in the past enough" to count as missing.
+    if (date) {
+      const slotStart = new Date(`${date}T00:00:00`);
+      slotStart.setMinutes(slotStart.getMinutes() + timeToMinutes(s.time_slot) + slotPastMin);
+      if (slotStart < now) {
+        totalPast++;
+        if (!allSubmitted) { missingPast++; missingPastSlots.push(s); }
+      }
+    }
+  }
+  return { totalAssigned, totalSubmitted, totalPast, missingPast, missingPastSlots };
+}
+
+// Send a single aggregated reminder push to one clinician with N missing
+// past games. Looks up the staff record by name to find the right
+// push_subscriptions.user_id.
+async function pushClinicianReminder(clinicianName, missingCount){
+  const norm = s => (s||'').trim().toLowerCase().replace(/\s+/g,' ');
+  const t = norm(clinicianName);
+  const staff = staffList.find(s => norm((s.first_name||'')+' '+(s.last_name||'')) === t);
+  if (!staff) return { ok:false, reason:'no staff match' };
+  try{
+    const r = await fetch(CFG.PUSH_FN_URL, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        title: `${CFG.CAMP_NAME} — Eval Reminder`,
+        body: `You have ${missingCount} unfinished evaluation${missingCount===1?'':'s'} from earlier games. Open the app to complete ${missingCount===1?'it':'them'}.`,
+        url: '',
+        tag: `eval-reminder-${staff.id}`,
+        user_id: String(staff.id)
+      })
+    });
+    const data = await r.json().catch(()=>({}));
+    return { ok: r.ok && data.ok !== false, sent: data.sent || 0 };
+  }catch(e){
+    return { ok:false, reason:e.message||'network' };
+  }
+}
+
+// Admin-triggered: scan every clinician with at least one past unfinished
+// game and send each one an aggregated reminder push.
+async function remindAllUnfinishedClinicians(){
+  const targets = clinicians
+    .map(cl => ({ name: cl.name, ...clinicianEvalProgress(cl.name) }))
+    .filter(x => x.missingPast > 0);
+  if (!targets.length) { toast('No unfinished evals from past games. 🎉'); return; }
+  const ok = await cf(`Send a reminder push to ${targets.length} clinician${targets.length===1?'':'s'} with unfinished evals?`,'Send Reminders','Cancel');
+  if (!ok) return;
+  let sent = 0, missed = 0;
+  for (const t of targets){
+    const r = await pushClinicianReminder(t.name, t.missingPast);
+    if (r.ok && r.sent > 0) sent++; else missed++;
+  }
+  toast(`✓ ${sent} reminder${sent===1?'':'s'} sent`+(missed?` · ${missed} no subscription`:''));
+}
+
+// Renders the per-clinician progress panel inside the Eval Tracker tab.
+// Each row: name (clickable → profile), X / Y games done, progress bar,
+// and a 🔔 Remind button if they have past unfinished games.
+function renderEvalTrackerByClinician(){
+  const con = document.getElementById('etClinicianPanel');
+  if (!con) return;
+  if (!clinicians.length) { con.innerHTML = ''; return; }
+  const rows = clinicians.map(cl => ({ name: cl.name, id: cl.id, ...clinicianEvalProgress(cl.name) }))
+    .filter(r => r.totalAssigned > 0)
+    .sort((a,b) => {
+      // Show clinicians with the most past-due games first.
+      if (b.missingPast !== a.missingPast) return b.missingPast - a.missingPast;
+      return a.name.localeCompare(b.name);
+    });
+  if (!rows.length) { con.innerHTML = ''; return; }
+  let html = '<div style="font-family:\'Oswald\',sans-serif;font-size:13px;letter-spacing:.08em;color:var(--or);margin-bottom:8px">BY CLINICIAN</div>';
+  html += '<div style="display:flex;flex-direction:column;gap:6px">';
+  rows.forEach(r => {
+    const pct = r.totalAssigned ? Math.round(r.totalSubmitted / r.totalAssigned * 100) : 0;
+    const barColor = r.totalSubmitted === r.totalAssigned ? 'var(--grn)' : (r.missingPast > 0 ? 'var(--red2)' : 'var(--or)');
+    const rem = r.missingPast > 0
+      ? `<button class="btn bsec bsm" style="flex-shrink:0" onclick="event.stopPropagation();remindOneClinician('${r.name.replace(/'/g, "\\'")}')" type="button">🔔 Remind</button>`
+      : '';
+    const pastNote = r.missingPast > 0
+      ? `<span style="color:var(--red2);font-weight:700">· ${r.missingPast} past-due</span>`
+      : (r.totalSubmitted === r.totalAssigned ? '<span style="color:var(--grn)">· all done ✓</span>' : '');
+    html += '<div style="background:var(--gray);border:1px solid var(--b2);border-radius:var(--r);padding:10px 12px">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">'
+      +   '<span onclick="openClinicianDetail(\''+r.id+'\')" style="font-size:13px;font-weight:600;color:var(--tx);cursor:pointer;text-decoration:underline;text-decoration-color:var(--or);text-decoration-thickness:1px;text-underline-offset:3px">'+r.name+'</span>'
+      +   '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0">'
+      +     '<span style="font-family:\'Oswald\',sans-serif;font-size:14px;color:var(--or)">'+r.totalSubmitted+' / '+r.totalAssigned+'</span>'
+      +     rem
+      +   '</div>'
+      + '</div>'
+      + '<div style="height:5px;background:var(--gray3);border-radius:3px;overflow:hidden;margin-bottom:4px"><div style="height:100%;width:'+pct+'%;background:'+barColor+';border-radius:3px"></div></div>'
+      + '<div style="font-size:10px;color:var(--tx3)">'+pct+'% complete '+pastNote+'</div>'
+      + '</div>';
+  });
+  html += '</div>';
+  con.innerHTML = html;
+}
+
+// Returns the HTML for the "Your Eval Progress" widget shown on a
+// clinician's My Profile. profile arg includes their first/last name.
+function renderMyEvalProgress(profile){
+  const fullName = ((profile.first_name||'')+' '+(profile.last_name||'')).trim();
+  if (!fullName) return '';
+  const p = clinicianEvalProgress(fullName);
+  if (!p.totalAssigned) return '';
+  const pct = Math.round(p.totalSubmitted / p.totalAssigned * 100);
+  const barColor = p.totalSubmitted === p.totalAssigned ? 'var(--grn)' : (p.missingPast > 0 ? 'var(--red2)' : 'var(--or)');
+  const note = p.missingPast > 0
+    ? `<span style="color:var(--red2);font-weight:700">${p.missingPast} past-due</span>`
+    : (p.totalSubmitted === p.totalAssigned ? '<span style="color:var(--grn)">All caught up ✓</span>' : '<span style="color:var(--or)">On track</span>');
+  return `<div style="background:var(--gray);border:1px solid var(--b2);border-radius:var(--r);padding:12px 14px;margin-bottom:14px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div style="font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:.08em;color:var(--or)">YOUR EVAL PROGRESS</div>
+      <div style="font-family:'Oswald',sans-serif;font-size:18px;color:var(--or)">${p.totalSubmitted} / ${p.totalAssigned}</div>
+    </div>
+    <div style="height:6px;background:var(--gray3);border-radius:3px;overflow:hidden;margin-bottom:6px"><div style="height:100%;width:${pct}%;background:${barColor};border-radius:3px;transition:width .3s"></div></div>
+    <div style="font-size:11px;color:var(--tx3)">${pct}% complete · ${note}</div>
+  </div>`;
+}
+
+// Single-clinician reminder (Remind button next to a row in the tracker).
+async function remindOneClinician(name){
+  const p = clinicianEvalProgress(name);
+  if (!p.missingPast) { toast('Nothing past-due for this clinician'); return; }
+  const r = await pushClinicianReminder(name, p.missingPast);
+  if (r.ok && r.sent > 0) toast(`✓ Reminder sent (${p.missingPast} missing)`);
+  else if (r.ok) toast('Clinician has not enabled notifications', true);
+  else toast('Reminder failed: '+(r.reason||'unknown'), true);
+}
 
 function renderLiveEvalGameList(){
   const body = document.getElementById('leGameListBody');
@@ -4134,6 +4300,7 @@ function renderMyProfile(role){
       <input type="file" id="mpPhotoUpload" accept="image/*" style="display:none" onchange="handleMyPhotoUpload(this,'${role}')">
       <button type="button" onclick="document.getElementById('mpPhotoUpload').click()" style="background:var(--gray2);border:1px solid var(--b3);border-radius:var(--rs);padding:8px 18px;font-family:'Source Sans 3',sans-serif;font-size:13px;color:var(--tx2);cursor:pointer;margin-top:4px">📷 Upload Photo</button>
     </div>
+    ${role==='staff' ? renderMyEvalProgress(profile) : ''}
     <button class="btn bor" style="width:100%;padding:13px;font-family:'Oswald',sans-serif;font-size:16px;letter-spacing:.08em;margin-bottom:14px" onclick="saveMyProfile('${role}')">💾 SAVE PROFILE</button>
     <div class="form-group" style="margin-bottom:10px">
       <label class="flabel">First Name</label>
@@ -4669,6 +4836,7 @@ function renderEvalTracker(){
       '<div style="background:var(--gray);border:1px solid var(--b2);border-radius:var(--r);padding:12px;text-align:center"><div style="font-family:\'Oswald\',sans-serif;font-size:28px;color:var(--or)">'+noEval+'</div><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em">Not Evaluated</div></div>'+
       '<div style="background:var(--gray);border:1px solid var(--b2);border-radius:var(--r);padding:12px;text-align:center"><div style="font-family:\'Oswald\',sans-serif;font-size:28px;color:var(--or)">'+(total?Math.round(evaluated/total*100):0)+'%</div><div style="font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em">Complete</div></div>';
   }
+  renderEvalTrackerByClinician();
   let list = [...campers].sort((a,b)=>(a.last_name+a.first_name).localeCompare(b.last_name+b.first_name));
   if(_evalFilter==='none') list = list.filter(c=>!evaluations.some(e=>e.camper_id===c.id));
   if(_evalFilter==='partial') list = list.filter(c=>{ const n=evaluations.filter(e=>e.camper_id===c.id).length; return n>0&&n<2; });
