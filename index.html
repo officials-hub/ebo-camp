@@ -326,7 +326,7 @@ td{padding:9px 12px;border-bottom:1px solid var(--b1);vertical-align:middle;colo
 #cfdlg.show{display:flex}
 #cfdlgbox{background:var(--gray);border:1px solid var(--b3);border-radius:14px;padding:24px;max-width:340px;width:100%;text-align:center}
 #cfdlgbox::before{display:none}
-#cfdlgtxt{font-size:15px;color:var(--tx);line-height:1.6;margin-bottom:18px;white-space:pre-line}
+#cfdlgtxt{font-size:15px;color:var(--tx);line-height:1.6;margin-bottom:18px;white-space:pre-line;max-height:60vh;overflow-y:auto;text-align:left}
 #cfdlgbtns{display:flex;gap:10px;justify-content:center}
 
 .spinner{display:inline-block;width:18px;height:18px;border:2px solid rgba(0,0,0,.3);border-top-color:#000;border-radius:50%;animation:spin .6s linear infinite}
@@ -1321,6 +1321,7 @@ function scoreColorHex(v){return v>=3?'#2ecc71':v>=2?'#C4C4C4':'#e74c3c';}
 
 // ═══ STATE ═══
 let campers=[],evaluations=[],clinicians=[],staffList=[],settings={};
+let pushSubs=[]; // populated on-demand for admin-only views (eval tracker)
 let gameFilms=[],gameFilmCampers=[];
 let gfSelectedCampers=new Set();
 let _oembedCache={};
@@ -2082,12 +2083,59 @@ async function remindAllUnfinishedClinicians(){
   if (!targets.length) { toast('No unfinished evals from past games. 🎉'); return; }
   const ok = await cf(`Send a reminder push to ${targets.length} clinician${targets.length===1?'':'s'} with unfinished evals?`,'Send Reminders','Cancel');
   if (!ok) return;
-  let sent = 0, missed = 0;
+  const sentTo = [], notSubscribed = [], failed = [];
   for (const t of targets){
     const r = await pushClinicianReminder(t.name, t.missingPast);
-    if (r.ok && r.sent > 0) sent++; else missed++;
+    if (r.ok && r.sent > 0) sentTo.push({name:t.name, missing:t.missingPast});
+    else if (r.ok && r.sent === 0) notSubscribed.push({name:t.name, missing:t.missingPast});
+    else failed.push({name:t.name, reason:r.reason||'error'});
   }
-  toast(`✓ ${sent} reminder${sent===1?'':'s'} sent`+(missed?` · ${missed} no subscription`:''));
+  showReminderResults(sentTo, notSubscribed, failed);
+}
+
+// Shows a one-shot results panel after Remind All so the admin can see who
+// got the push, who needs to be chased in person (no subscription), and
+// any technical failures.
+function showReminderResults(sentTo, notSubscribed, failed){
+  let msg = '';
+  if (sentTo.length) msg += `✓ Pushed to ${sentTo.length} clinician${sentTo.length===1?'':'s'}\n`;
+  if (notSubscribed.length){
+    msg += `\n🔕 Not subscribed (chase in person, ${notSubscribed.length}):\n`;
+    msg += notSubscribed.map(x => `  • ${x.name} — ${x.missing} missing`).join('\n');
+  }
+  if (failed.length){
+    msg += `\n\n✕ Send failed (${failed.length}):\n`;
+    msg += failed.map(x => `  • ${x.name} (${x.reason})`).join('\n');
+  }
+  if (!msg) msg = 'No reminders sent.';
+  // Reuse cf() as an info modal — both buttons dismiss.
+  cf(msg.trim(), 'OK', 'Close');
+}
+
+// Pull every push subscription so the eval tracker can show whether each
+// clinician is reachable. Fails silently if RLS blocks the table from the
+// anon key — the badges just become unknown rather than breaking the page.
+async function loadPushSubsForAdmin(){
+  try{
+    const rows = await supa('push_subscriptions','GET',null,'?select=user_id');
+    pushSubs = Array.isArray(rows) ? rows : [];
+  }catch(e){
+    console.warn('Could not load push_subscriptions:',e);
+    pushSubs = [];
+  }
+}
+
+// True if the staff record for `clinicianName` has at least one push
+// subscription registered. Returns null when we don't know (e.g. push
+// subscription table couldn't be loaded), so the UI can render an
+// uncertain badge instead of a wrong one.
+function clinicianPushSubscribed(clinicianName){
+  if (!pushSubs.length) return null;
+  const norm = s => (s||'').trim().toLowerCase().replace(/\s+/g,' ');
+  const t = norm(clinicianName);
+  const staff = staffList.find(s => norm((s.first_name||'')+' '+(s.last_name||'')) === t);
+  if (!staff) return false;
+  return pushSubs.some(p => String(p.user_id) === String(staff.id));
 }
 
 // Renders the per-clinician progress panel inside the Eval Tracker tab.
@@ -2110,22 +2158,32 @@ function renderEvalTrackerByClinician(){
   rows.forEach(r => {
     const pct = r.totalAssigned ? Math.round(r.totalSubmitted / r.totalAssigned * 100) : 0;
     const barColor = r.totalSubmitted === r.totalAssigned ? 'var(--grn)' : (r.missingPast > 0 ? 'var(--red2)' : 'var(--or)');
+    const subscribed = clinicianPushSubscribed(r.name);
+    const subBadge = subscribed === true
+      ? '<span title="Notifications enabled" style="font-size:12px">🔔</span>'
+      : subscribed === false
+        ? '<span title="No notifications enabled — chase in person" style="font-size:12px;opacity:.6">🔕</span>'
+        : '';
     const rem = r.missingPast > 0
       ? `<button class="btn bsec bsm" style="flex-shrink:0" onclick="event.stopPropagation();remindOneClinician('${r.name.replace(/'/g, "\\'")}')" type="button">🔔 Remind</button>`
       : '';
     const pastNote = r.missingPast > 0
       ? `<span style="color:var(--red2);font-weight:700">· ${r.missingPast} past-due</span>`
       : (r.totalSubmitted === r.totalAssigned ? '<span style="color:var(--grn)">· all done ✓</span>' : '');
+    const subNote = subscribed === false ? '<span style="color:var(--tx3)"> · 🔕 not subscribed</span>' : '';
     html += '<div style="background:var(--gray);border:1px solid var(--b2);border-radius:var(--r);padding:10px 12px">'
       + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">'
-      +   '<span onclick="openClinicianDetail(\''+r.id+'\')" style="font-size:13px;font-weight:600;color:var(--tx);cursor:pointer;text-decoration:underline;text-decoration-color:var(--or);text-decoration-thickness:1px;text-underline-offset:3px">'+r.name+'</span>'
+      +   '<span style="display:flex;align-items:center;gap:6px;min-width:0">'
+      +     subBadge
+      +     '<span onclick="openClinicianDetail(\''+r.id+'\')" style="font-size:13px;font-weight:600;color:var(--tx);cursor:pointer;text-decoration:underline;text-decoration-color:var(--or);text-decoration-thickness:1px;text-underline-offset:3px">'+r.name+'</span>'
+      +   '</span>'
       +   '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0">'
       +     '<span style="font-family:\'Oswald\',sans-serif;font-size:14px;color:var(--or)">'+r.totalSubmitted+' / '+r.totalAssigned+'</span>'
       +     rem
       +   '</div>'
       + '</div>'
       + '<div style="height:5px;background:var(--gray3);border-radius:3px;overflow:hidden;margin-bottom:4px"><div style="height:100%;width:'+pct+'%;background:'+barColor+';border-radius:3px"></div></div>'
-      + '<div style="font-size:10px;color:var(--tx3)">'+pct+'% complete '+pastNote+'</div>'
+      + '<div style="font-size:10px;color:var(--tx3)">'+pct+'% complete '+pastNote+subNote+'</div>'
       + '</div>';
   });
   html += '</div>';
@@ -2649,7 +2707,7 @@ function _aTabActions(name){
   if(name==='gamefilm'){renderGameFilmPanel();}
   if(name==='schedule'){renderAdminSchedule();}
   if(name==='dailyview'){renderDailyView();}
-  if(name==='evaltracker'){renderEvalTracker();}
+  if(name==='evaltracker'){loadPushSubsForAdmin().finally(renderEvalTracker);}
 }
 function updateAdminStats(){
   document.getElementById('asc').textContent=campers.length;
