@@ -3774,6 +3774,17 @@ function openCamperProfile(id,evalContext){
   if(c.bio)body+=`<div class="pmod-bio">${c.bio}</div>`;
   else body+='<div style="font-size:13px;color:var(--tx3);padding:10px 0">No bio yet.</div>';
   body+=`</div>`;
+  // Contact block — same shape clinician profile uses, so phone/email show
+  // the same on mobile as on the admin-only profile screen on desktop.
+  const cEmail=(c.email||'').trim();
+  const cPhone=(c.phone||'').trim();
+  const cTel='tel:'+cPhone.replace(/[^0-9+]/g,'');
+  body+=`<div style="padding:0 16px 16px"><div class="pmod-sec" style="font-family:'Oswald',sans-serif;font-size:13px;color:var(--or);letter-spacing:.08em;margin-bottom:8px">CONTACT</div>`;
+  if(cEmail) body+=`<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--gray2);border:1px solid var(--b2);border-radius:var(--rs);margin-bottom:8px"><span style="font-size:14px">✉️</span><a href="mailto:${cEmail}" style="font-size:13px;color:var(--or);text-decoration:none;word-break:break-all">${cEmail}</a></div>`;
+  else body+=`<div style="font-size:12px;color:var(--tx3);padding:10px 12px;background:var(--gray2);border:1px solid var(--b2);border-radius:var(--rs);margin-bottom:8px">No email on file</div>`;
+  if(cPhone) body+=`<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--gray2);border:1px solid var(--b2);border-radius:var(--rs);margin-bottom:8px"><span style="font-size:14px">📞</span><a href="${cTel}" style="font-size:13px;color:var(--or);text-decoration:none">${cPhone}</a></div>`;
+  else body+=`<div style="font-size:12px;color:var(--tx3);padding:10px 12px;background:var(--gray2);border:1px solid var(--b2);border-radius:var(--rs);margin-bottom:8px">No phone on file</div>`;
+  body+=`</div>`;
   body+=`<div style="padding:0 16px 16px"><div class="pmod-sec" style="font-family:'Oswald',sans-serif;font-size:13px;color:var(--or);letter-spacing:.08em;margin-bottom:8px">🎥 GAME FILM</div><div id="pmFilmList"></div></div>`;
   // Clinician/staff: show Evaluate button. If opened from schedule, pre-fill court/time/day.
   if(CR==='staff'&&CU&&String(CU.id)!==String(id)){
@@ -4245,13 +4256,22 @@ async function saveMyProfile(role){
   const bio=document.getElementById('mpBio')?.value.trim()||null;
   try{
     if(role==='camper'){
-      const data={first_name:first,last_name:last,city,state,phone,conference,bio};
-      await supa('campers','PATCH',data,`?id=eq.${CU.id}`);
+      // Save in stages so one missing column (phone, conference) doesn't
+      // sink the whole profile. Tracks which fields failed so we can
+      // surface a real error instead of silently dropping data.
+      const failed=[];
+      const tryPatch=async(payload,label)=>{
+        try{await supa('campers','PATCH',payload,`?id=eq.${CU.id}`);Object.assign(CU,payload);}
+        catch(err){console.warn(`Camper ${label} save failed:`,err);failed.push(`${label} (${err.message||'error'})`);}
+      };
+      await tryPatch({first_name:first,last_name:last,city,state,bio},'name/city/state/bio');
+      if(phone!==null) await tryPatch({phone},'phone');
+      if(conference!==null) await tryPatch({conference},'conference');
       if(photo){
         try{ await supa('campers','PATCH',{photo},`?id=eq.${CU.id}`); Object.assign(CU,{photo}); }
-        catch(photoErr){ console.warn('Photo save failed:',photoErr); toast('Profile saved but photo failed — try a smaller image',true); }
+        catch(photoErr){ console.warn('Photo save failed:',photoErr); failed.push(`photo (${photoErr.message||'error'})`); }
       }
-      Object.assign(CU,data);
+      if(failed.length){throw new Error(failed.join(' · '));}
     } else {
       // Clinician (logged in via staff portal): split fields between staff + clinicians tables.
       // staff has first_name/last_name; clinicians has photo/role/city/state/conference/bio (matched by name).
@@ -4275,16 +4295,21 @@ async function saveMyProfile(role){
       await supa('staff','PATCH',{first_name:first,last_name:last},`?id=eq.${CU.id}`);
       Object.assign(CU,{first_name:first,last_name:last});
       if(cl){
-        const clData={name:newName,city,state,conference,bio};
-        await supa('clinicians','PATCH',clData,`?id=eq.${cl.id}`);
-        if(phone){
-          try{ await supa('clinicians','PATCH',{phone},`?id=eq.${cl.id}`); }
-          catch(phoneErr){ console.warn('Phone save failed (column may not exist on clinicians table):',phoneErr); }
-        }
-        if(photo){
-          try{ await supa('clinicians','PATCH',{photo},`?id=eq.${cl.id}`); }
-          catch(photoErr){ console.warn('Photo save failed:',photoErr); toast('Profile saved but photo failed — try a smaller image',true); }
-        }
+        // Stage each field on its own so a single column-mismatch (e.g. a
+        // schema that's missing `bio`) doesn't kill the whole save.
+        const failed=[];
+        const tryClPatch=async(payload,label)=>{
+          try{await supa('clinicians','PATCH',payload,`?id=eq.${cl.id}`);Object.assign(cl,payload);}
+          catch(err){console.warn(`Clinician ${label} save failed:`,err);failed.push(`${label} (${err.message||'error'})`);}
+        };
+        await tryClPatch({name:newName},'name');
+        if(city!==null) await tryClPatch({city},'city');
+        if(state!==null) await tryClPatch({state},'state');
+        if(conference!==null) await tryClPatch({conference},'conference');
+        if(bio!==null) await tryClPatch({bio},'bio');
+        if(phone!==null) await tryClPatch({phone},'phone');
+        if(photo) await tryClPatch({photo},'photo');
+        if(failed.length){throw new Error(failed.join(' · '));}
       } else {
         toast('Profile saved (photo/bio not linked — no clinician record)',true);
       }
@@ -4297,7 +4322,9 @@ async function saveMyProfile(role){
     setTimeout(()=>status.textContent='',3000);
   }catch(e){
     console.error(e);
-    status.textContent='Error saving — try again.';status.style.color='var(--red2)';
+    status.textContent='✕ '+(e.message||'Error saving — try again.');
+    status.style.color='var(--red2)';
+    toast('Some fields failed: '+(e.message||'see status'),true);
   }
 }
 
