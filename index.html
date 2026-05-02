@@ -926,7 +926,7 @@ async function enableNotifications(){
 <div class="tc" id="at-staff">
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:7px">
 <div class="stitle" style="margin:0">CLINICIAN <span>LIST</span></div>
-<div style="display:flex;gap:6px">
+<div style="display:flex;gap:6px;flex-wrap:wrap">
 <button class="btn bor bsm" onclick="resetClinicianModal();openModal('mClinician')" type="button">➕ Add Clinician</button>
 <button class="btn bsec bsm" id="sendAllClinicianLoginsBtn" onclick="sendAllClinicianLogins()" type="button">Send All Logins</button>
 <button class="btn bred bsm" onclick="deleteAllClinicians()" type="button">Del All</button>
@@ -970,9 +970,6 @@ async function enableNotifications(){
   <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
     <div class="swrap"><span class="sicon">🔍</span><input class="sinput" type="text" id="apSearch" placeholder="Search..." oninput="renderProfiles(this.value)"></div>
     <select class="finput" id="apFilter" style="width:auto;margin-bottom:0;padding:8px 11px;font-size:12px" onchange="renderProfiles(document.getElementById('apSearch').value)">
-      <option value="">All</option>
-      <option value="rmac">RMAC</option>
-      <option value="returning">Returning</option>
       <option value="evaluated">Evaluated</option>
       <option value="not-evaluated">Not Evaluated</option>
     </select>
