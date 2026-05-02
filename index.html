@@ -3134,10 +3134,11 @@ async function runJotformBackfill(){
       return;
     }
     const cutoff=data.min_date?` (cutoff ${data.min_date})`:'';
-    const summary=`Fetched ${data.fetched}${cutoff}. Created ${data.created}, ${data.duplicates} dupes skipped`+(data.skipped_old?`, ${data.skipped_old} pre-cutoff skipped`:'')+(data.invalid?`, ${data.invalid} invalid`:'')+(data.errors?`, ${data.errors} errors`:'')+'.';
+    const summary=`Fetched ${data.fetched}${cutoff}. Created ${data.created}`+(data.updated?`, ${data.updated} updated (phone added)`:'')+`, ${data.duplicates} dupes skipped`+(data.skipped_old?`, ${data.skipped_old} pre-cutoff skipped`:'')+(data.invalid?`, ${data.invalid} invalid`:'')+(data.errors?`, ${data.errors} errors`:'')+'.';
     if(status){status.style.color=data.errors?'var(--red2)':'var(--grn)';status.textContent='✓ '+summary;}
-    toast(`✓ ${data.created} new camper${data.created===1?'':'s'} imported`);
-    if(data.created>0){await loadAll();renderAdminCampers();updateAdminStats();populateAdminForms();}
+    const totalChanges=(data.created||0)+(data.updated||0);
+    toast(`✓ ${data.created} new${data.updated?` · ${data.updated} updated`:''}`);
+    if(totalChanges>0){await loadAll();renderAdminCampers();updateAdminStats();populateAdminForms();}
     if(data.errors&&data.details){console.warn('JotForm backfill errors:',data.details.filter(d=>d.result==='error'));}
   }catch(e){
     console.error(e);

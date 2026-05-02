@@ -17,7 +17,7 @@
  *   SUPABASE_URL
  *   SUPABASE_ANON_KEY
  *
- * Returns: { ok, fetched, skipped_old, created, duplicates, invalid, errors, details }
+ * Returns: { ok, fetched, skipped_old, created, updated, duplicates, invalid, errors, details }
  */
 
 const { extractCamper, insertCamper } = require('./_jotform-shared');
@@ -71,7 +71,7 @@ exports.handler = async (event) => {
     if (offset > 10000) break; // safety stop
   }
 
-  const summary = { fetched: all.length, skipped_old: 0, created: 0, duplicates: 0, invalid: 0, errors: 0, min_date: minDateStr, details: [] };
+  const summary = { fetched: all.length, skipped_old: 0, created: 0, updated: 0, duplicates: 0, invalid: 0, errors: 0, min_date: minDateStr, details: [] };
 
   for (const sub of all) {
     // Client-side safety filter in case the JotForm filter param ever drifts.
@@ -92,6 +92,7 @@ exports.handler = async (event) => {
     const camper = extractCamper(flat);
     const result = await insertCamper(camper);
     if (result.status === 'created') summary.created++;
+    else if (result.status === 'updated') summary.updated++;
     else if (result.status === 'duplicate') summary.duplicates++;
     else if (result.status === 'invalid') summary.invalid++;
     else summary.errors++;

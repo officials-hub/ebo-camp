@@ -57,19 +57,46 @@ function extractCamper(sub) {
   const first = (nameComposite?.first || readVal(findByKey('first'))).toString().trim();
   const last  = (nameComposite?.last  || readVal(findByKey('last'))).toString().trim();
 
-  const phoneEntry = entries.find(
-    ([k, v]) => k.toLowerCase().includes('phone') && v && typeof v === 'object' && !Array.isArray(v)
-  );
-  const phoneComposite = phoneEntry?.[1];
+  // JotForm phone fields can be named anything — check the common labels.
+  // Answer may be a composite object ({area, phone, full}) or a plain string.
+  const PHONE_NEEDLES = ['phone', 'cell', 'mobile', 'tel', 'contact'];
+  const isPhoneKey = (k) => {
+    const lk = k.toLowerCase();
+    return PHONE_NEEDLES.some((n) => lk.includes(n));
+  };
+  const phoneFromObject = (obj) => {
+    if (!obj || typeof obj !== 'object') return '';
+    if (typeof obj.full === 'string' && obj.full.trim()) return obj.full.trim();
+    if (typeof obj.prettyFormat === 'string' && obj.prettyFormat.trim()) return obj.prettyFormat.trim();
+    const built = `${obj.area || ''}${obj.phone || ''}`.trim();
+    if (built) return built;
+    // Last resort: stringify any string values inside
+    return Object.values(obj).filter((v) => typeof v === 'string' && v.trim()).join(' ').trim();
+  };
   let phone = '';
-  if (phoneComposite) {
-    if (typeof phoneComposite.full === 'string' && phoneComposite.full.trim()) {
-      phone = phoneComposite.full.trim();
-    } else {
-      phone = `${phoneComposite.area || ''}${phoneComposite.phone || ''}`.trim();
+  for (const [k, v] of entries) {
+    if (!isPhoneKey(k)) continue;
+    if (v && typeof v === 'object' && !Array.isArray(v)) {
+      phone = phoneFromObject(v);
+    } else if (typeof v === 'string' && v.trim()) {
+      phone = v.trim();
+    } else if (Array.isArray(v)) {
+      phone = v.filter(Boolean).join(' ').trim();
     }
-  } else {
-    phone = readVal(findByKey('phone')).toString().trim();
+    if (phone) break;
+  }
+  // One-time diagnostic so we can see the raw shape JotForm sent if the
+  // matcher still misses a phone. Safe to leave on — only fires when phone
+  // ends up blank.
+  if (!phone) {
+    const phoneShapes = entries
+      .filter(([k]) => isPhoneKey(k))
+      .map(([k, v]) => ({ key: k, type: Array.isArray(v) ? 'array' : typeof v, sample: typeof v === 'object' ? Object.keys(v || {}) : String(v).slice(0, 40) }));
+    if (phoneShapes.length) {
+      console.warn('[jotform-extract] phone keys present but empty/unrecognized:', JSON.stringify(phoneShapes));
+    } else {
+      console.warn('[jotform-extract] no phone-like field found. Sample keys:', entries.slice(0, 20).map(([k]) => k).join(', '));
+    }
   }
 
   const email = readVal(findByKey('email')).toString().trim().toLowerCase();
@@ -105,7 +132,7 @@ async function insertCamper(camper) {
     return { status: 'error', reason: 'supabase env not configured' };
   }
 
-  const existsUrl = `${process.env.SUPABASE_URL}/rest/v1/campers?email=eq.${encodeURIComponent(camper.email)}&select=id`;
+  const existsUrl = `${process.env.SUPABASE_URL}/rest/v1/campers?email=eq.${encodeURIComponent(camper.email)}&select=id,phone`;
   const existsRes = await fetch(existsUrl, { headers: supabaseHeaders() });
   if (!existsRes.ok) {
     const body = await existsRes.text().catch(() => '');
@@ -113,6 +140,20 @@ async function insertCamper(camper) {
   }
   const existing = await existsRes.json();
   if (Array.isArray(existing) && existing.length > 0) {
+    const row = existing[0];
+    const existingPhone = (row.phone || '').trim();
+    // If the existing row is missing a phone and we just extracted one, patch
+    // it. Lets a re-run of backfill add phones to campers already imported.
+    if (!existingPhone && camper.phone) {
+      const patchRes = await fetch(`${process.env.SUPABASE_URL}/rest/v1/campers?id=eq.${row.id}`, {
+        method: 'PATCH',
+        headers: { ...supabaseHeaders(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ phone: camper.phone }),
+      });
+      if (patchRes.ok) return { status: 'updated', email: camper.email, reason: 'added missing phone' };
+      const body = await patchRes.text().catch(() => '');
+      return { status: 'error', reason: `phone patch failed (${patchRes.status})`, body, email: camper.email };
+    }
     return { status: 'duplicate', email: camper.email };
   }
 
