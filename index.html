@@ -1095,7 +1095,7 @@ async function enableNotifications(){
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
   <div class="stitle" style="margin:0">EVAL <span>TRACKER</span></div>
   <div style="display:flex;gap:6px;flex-wrap:wrap">
-    <button class="btn bsec bsm" onclick="remindAllUnfinishedClinicians()" type="button">🔔 Remind All</button>
+    <button class="btn bsec bsm" onclick="remindAllUnfinishedClinicians()" type="button">✉️ Remind All</button>
     <button class="btn bor bsm" onclick="renderEvalTracker()" type="button">🔄 Refresh</button>
   </div>
 </div>
@@ -1343,7 +1343,6 @@ function scoreColorHex(v){return v>=3?'#2ecc71':v>=2?'#C4C4C4':'#e74c3c';}
 
 // ═══ STATE ═══
 let campers=[],evaluations=[],clinicians=[],staffList=[],settings={};
-let pushSubs=[]; // populated on-demand for admin-only views (eval tracker)
 let gameFilms=[],gameFilmCampers=[];
 let gfSelectedCampers=new Set();
 let _oembedCache={};
@@ -2285,61 +2284,75 @@ function clinicianEvalProgress(clinicianName, opts){
   return { totalAssigned, totalSubmitted, totalPast, missingPast, missingPastSlots };
 }
 
-// Send a single aggregated reminder push to one clinician with N missing
-// past games. Looks up the staff record by name to find the right
-// push_subscriptions.user_id.
-async function pushClinicianReminder(clinicianName, missingCount){
+// Send a single aggregated reminder email to one clinician with N missing
+// past games. Looks up the email on the clinicians table by name.
+async function emailClinicianReminder(clinicianName, missingCount){
   const norm = s => (s||'').trim().toLowerCase().replace(/\s+/g,' ');
   const t = norm(clinicianName);
-  const staff = staffList.find(s => norm((s.first_name||'')+' '+(s.last_name||'')) === t);
-  if (!staff) return { ok:false, reason:'no staff match' };
+  const cl = clinicians.find(c => norm(c.name) === t);
+  const email = (cl && cl.email || '').trim();
+  if (!email || !email.includes('@')) return { ok:false, reason:'no email on file' };
+  const first = (cl.name || '').split(' ')[0] || '';
+  const html = `<div style="max-width:520px;margin:0 auto;background:#fff;border-radius:12px;padding:24px;font-family:Arial,sans-serif;color:#1a1a1a;border:1px solid #e0ddd8">
+    <h2 style="color:#000;margin:0 0 12px;font-size:20px">${CFG.CAMP_NAME}</h2>
+    <p style="color:#333;margin:0 0 12px">Hi ${first},</p>
+    <p style="color:#333;margin:0 0 16px">You have <strong>${missingCount} unfinished evaluation${missingCount===1?'':'s'}</strong> from earlier games. Please open the EBO Camp app to complete ${missingCount===1?'it':'them'} as soon as you can.</p>
+    <p style="color:#555;font-size:13px;margin:0">Thanks for keeping the campers' feedback flowing.</p>
+    <p style="color:#999;font-size:11px;margin-top:20px">Elevate Basketball Officiating Camp</p>
+  </div>`;
   try{
-    const r = await fetch(CFG.PUSH_FN_URL, {
+    const r = await fetch(CFG.EMAIL_FN_URL, {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
-        title: `${CFG.CAMP_NAME} — Eval Reminder`,
-        body: `You have ${missingCount} unfinished evaluation${missingCount===1?'':'s'} from earlier games. Open the app to complete ${missingCount===1?'it':'them'}.`,
-        url: '',
-        tag: `eval-reminder-${staff.id}`,
-        user_id: String(staff.id)
+        to: email,
+        from: CFG.FROM_EMAIL,
+        subject: `${CFG.CAMP_NAME} — Eval Reminder`,
+        html
       })
     });
     const data = await r.json().catch(()=>({}));
-    return { ok: r.ok && data.ok !== false, sent: data.sent || 0 };
+    return { ok: r.ok && data.ok !== false, sent: r.ok ? 1 : 0, email };
   }catch(e){
     return { ok:false, reason:e.message||'network' };
   }
 }
 
 // Admin-triggered: scan every clinician with at least one past unfinished
-// game and send each one an aggregated reminder push.
+// game and send each one an aggregated reminder email.
 async function remindAllUnfinishedClinicians(){
   const targets = clinicians
     .map(cl => ({ name: cl.name, ...clinicianEvalProgress(cl.name) }))
     .filter(x => x.missingPast > 0);
   if (!targets.length) { toast('No unfinished evals from past games. 🎉'); return; }
-  const ok = await cf(`Send a reminder push to ${targets.length} clinician${targets.length===1?'':'s'} with unfinished evals?`,'Send Reminders','Cancel');
+  const reachable = targets.filter(t => clinicianHasEmailOnFile(t.name));
+  const skipNoEmail = targets.filter(t => !clinicianHasEmailOnFile(t.name));
+  if (!reachable.length){
+    cf(`No clinicians with unfinished evals have an email on file. Add emails on the clinician records first.`, 'OK', 'Close');
+    return;
+  }
+  const skipNote = skipNoEmail.length ? `\n\n${skipNoEmail.length} will be skipped — no email on file.` : '';
+  const ok = await cf(`Send a reminder email to ${reachable.length} clinician${reachable.length===1?'':'s'} with unfinished evals?${skipNote}`,'Send Reminders','Cancel');
   if (!ok) return;
-  const sentTo = [], notSubscribed = [], failed = [];
-  for (const t of targets){
-    const r = await pushClinicianReminder(t.name, t.missingPast);
+  const sentTo = [], noEmail = skipNoEmail.map(t => ({name:t.name, missing:t.missingPast})), failed = [];
+  for (const t of reachable){
+    const r = await emailClinicianReminder(t.name, t.missingPast);
     if (r.ok && r.sent > 0) sentTo.push({name:t.name, missing:t.missingPast});
-    else if (r.ok && r.sent === 0) notSubscribed.push({name:t.name, missing:t.missingPast});
+    else if (r.reason === 'no email on file') noEmail.push({name:t.name, missing:t.missingPast});
     else failed.push({name:t.name, reason:r.reason||'error'});
   }
-  showReminderResults(sentTo, notSubscribed, failed);
+  showReminderResults(sentTo, noEmail, failed);
 }
 
 // Shows a one-shot results panel after Remind All so the admin can see who
-// got the push, who needs to be chased in person (no subscription), and
+// got the email, who needs to be chased in person (no email on file), and
 // any technical failures.
-function showReminderResults(sentTo, notSubscribed, failed){
+function showReminderResults(sentTo, noEmail, failed){
   let msg = '';
-  if (sentTo.length) msg += `✓ Pushed to ${sentTo.length} clinician${sentTo.length===1?'':'s'}\n`;
-  if (notSubscribed.length){
-    msg += `\n🔕 Not subscribed (chase in person, ${notSubscribed.length}):\n`;
-    msg += notSubscribed.map(x => `  • ${x.name} — ${x.missing} missing`).join('\n');
+  if (sentTo.length) msg += `✓ Emailed ${sentTo.length} clinician${sentTo.length===1?'':'s'}\n`;
+  if (noEmail.length){
+    msg += `\n✉️ No email on file (chase in person, ${noEmail.length}):\n`;
+    msg += noEmail.map(x => `  • ${x.name} — ${x.missing} missing`).join('\n');
   }
   if (failed.length){
     msg += `\n\n✕ Send failed (${failed.length}):\n`;
@@ -2350,35 +2363,18 @@ function showReminderResults(sentTo, notSubscribed, failed){
   cf(msg.trim(), 'OK', 'Close');
 }
 
-// Pull every push subscription so the eval tracker can show whether each
-// clinician is reachable. Fails silently if RLS blocks the table from the
-// anon key — the badges just become unknown rather than breaking the page.
-async function loadPushSubsForAdmin(){
-  try{
-    const rows = await supa('push_subscriptions','GET',null,'?select=user_id');
-    pushSubs = Array.isArray(rows) ? rows : [];
-  }catch(e){
-    console.warn('Could not load push_subscriptions:',e);
-    pushSubs = [];
-  }
-}
-
-// True if the staff record for `clinicianName` has at least one push
-// subscription registered. Returns null when we don't know (e.g. push
-// subscription table couldn't be loaded), so the UI can render an
-// uncertain badge instead of a wrong one.
-function clinicianPushSubscribed(clinicianName){
-  if (!pushSubs.length) return null;
+// True if the clinician record has a usable email address on file.
+function clinicianHasEmailOnFile(clinicianName){
   const norm = s => (s||'').trim().toLowerCase().replace(/\s+/g,' ');
   const t = norm(clinicianName);
-  const staff = staffList.find(s => norm((s.first_name||'')+' '+(s.last_name||'')) === t);
-  if (!staff) return false;
-  return pushSubs.some(p => String(p.user_id) === String(staff.id));
+  const cl = clinicians.find(c => norm(c.name) === t);
+  const email = (cl && cl.email || '').trim();
+  return !!email && email.includes('@');
 }
 
 // Renders the per-clinician progress panel inside the Eval Tracker tab.
 // Each row: name (clickable → profile), X / Y games done, progress bar,
-// and a 🔔 Remind button if they have past unfinished games.
+// and an ✉️ Remind button if they have past unfinished games + email.
 function renderEvalTrackerByClinician(){
   const con = document.getElementById('etClinicianPanel');
   if (!con) return;
@@ -2396,19 +2392,17 @@ function renderEvalTrackerByClinician(){
   rows.forEach(r => {
     const pct = r.totalAssigned ? Math.round(r.totalSubmitted / r.totalAssigned * 100) : 0;
     const barColor = r.totalSubmitted === r.totalAssigned ? 'var(--grn)' : (r.missingPast > 0 ? 'var(--red2)' : 'var(--or)');
-    const subscribed = clinicianPushSubscribed(r.name);
-    const subBadge = subscribed === true
-      ? '<span title="Notifications enabled" style="font-size:12px">🔔</span>'
-      : subscribed === false
-        ? '<span title="No notifications enabled — chase in person" style="font-size:12px;opacity:.6">🔕</span>'
-        : '';
-    const rem = r.missingPast > 0
-      ? `<button class="btn bsec bsm" style="flex-shrink:0" onclick="event.stopPropagation();remindOneClinician('${r.name.replace(/'/g, "\\'")}')" type="button">🔔 Remind</button>`
+    const hasEmail = clinicianHasEmailOnFile(r.name);
+    const subBadge = hasEmail
+      ? '<span title="Email on file" style="font-size:12px">✉️</span>'
+      : '<span title="No email on file — chase in person" style="font-size:12px;opacity:.6">🚫</span>';
+    const rem = r.missingPast > 0 && hasEmail
+      ? `<button class="btn bsec bsm" style="flex-shrink:0" onclick="event.stopPropagation();remindOneClinician('${r.name.replace(/'/g, "\\'")}')" type="button">✉️ Remind</button>`
       : '';
     const pastNote = r.missingPast > 0
       ? `<span style="color:var(--red2);font-weight:700">· ${r.missingPast} past-due</span>`
       : (r.totalSubmitted === r.totalAssigned ? '<span style="color:var(--grn)">· all done ✓</span>' : '');
-    const subNote = subscribed === false ? '<span style="color:var(--tx3)"> · 🔕 not subscribed</span>' : '';
+    const subNote = !hasEmail ? '<span style="color:var(--tx3)"> · no email on file</span>' : '';
     html += '<div style="background:var(--gray);border:1px solid var(--b2);border-radius:var(--r);padding:10px 12px">'
       + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">'
       +   '<span style="display:flex;align-items:center;gap:6px;min-width:0">'
@@ -2454,9 +2448,9 @@ function renderMyEvalProgress(profile){
 async function remindOneClinician(name){
   const p = clinicianEvalProgress(name);
   if (!p.missingPast) { toast('Nothing past-due for this clinician'); return; }
-  const r = await pushClinicianReminder(name, p.missingPast);
-  if (r.ok && r.sent > 0) toast(`✓ Reminder sent (${p.missingPast} missing)`);
-  else if (r.ok) toast('Clinician has not enabled notifications', true);
+  const r = await emailClinicianReminder(name, p.missingPast);
+  if (r.ok && r.sent > 0) toast(`✓ Reminder emailed (${p.missingPast} missing)`);
+  else if (r.reason === 'no email on file') toast('No email on file for this clinician', true);
   else toast('Reminder failed: '+(r.reason||'unknown'), true);
 }
 
@@ -2945,7 +2939,7 @@ function _aTabActions(name){
   if(name==='gamefilm'){renderGameFilmPanel();}
   if(name==='schedule'){renderAdminSchedule();}
   if(name==='dailyview'){renderDailyView();}
-  if(name==='evaltracker'){loadPushSubsForAdmin().finally(renderEvalTracker);}
+  if(name==='evaltracker'){renderEvalTracker();}
 }
 function updateAdminStats(){
   document.getElementById('asc').textContent=campers.length;
@@ -4040,17 +4034,17 @@ async function sendEmailBlast(){
         to: r.email,
         from: CFG.FROM_EMAIL,
         subject: subject,
-        html: `<div style="max-width:480px;margin:0 auto;font-family:Arial,sans-serif;background:#111;border-radius:10px;overflow:hidden;">
-          <div style="background:#C4C4C4;padding:14px 18px;">
+        html: `<div style="max-width:520px;margin:0 auto;font-family:Arial,sans-serif;background:#fff;border:1px solid #e0ddd8;border-radius:12px;overflow:hidden;color:#1a1a1a">
+          <div style="background:#1a1a1a;padding:14px 20px;">
             <div style="color:#fff;font-size:15px;font-weight:700;letter-spacing:1px;">ELEVATE BASKETBALL OFFICIATING CAMP</div>
           </div>
-          <div style="padding:18px;">
-            <p style="color:#aaa;font-size:11px;margin:0 0 10px;text-transform:uppercase;letter-spacing:.08em;">Message from Camp Administration</p>
-            <h2 style="color:#C4C4C4;font-size:18px;margin:0 0 12px">${subject}</h2>
-            <div style="color:#f0f0eb;font-size:14px;line-height:1.7;margin:0 0 16px;white-space:pre-wrap">${message}</div>
-            <a href="https://officials-hub.github.io/ebo-camp/" style="display:inline-block;background:#C4C4C4;color:#000;font-weight:700;font-size:13px;padding:10px 22px;border-radius:6px;text-decoration:none;">Open Camp Portal →</a>
+          <div style="padding:22px 20px;">
+            <p style="color:#888;font-size:11px;margin:0 0 10px;text-transform:uppercase;letter-spacing:.08em;">Message from Camp Administration</p>
+            <h2 style="color:#1a1a1a;font-size:20px;margin:0 0 14px">${subject}</h2>
+            <div style="color:#333;font-size:15px;line-height:1.7;margin:0 0 20px;white-space:pre-wrap">${message}</div>
+            <a href="https://officials-hub.github.io/ebo-camp/" style="display:inline-block;background:#1a1a1a;color:#fff;font-weight:700;font-size:13px;padding:11px 24px;border-radius:6px;text-decoration:none;">Open Camp Portal →</a>
           </div>
-          <div style="padding:10px 18px;border-top:1px solid #333;font-size:10px;color:#555">Elevate Basketball Officiating Camp · Lakewood, CO · May 1 – 3, 2026</div>
+          <div style="padding:12px 20px;border-top:1px solid #e6dfd4;background:#f7f1ea;font-size:11px;color:#888">Elevate Basketball Officiating Camp · Lakewood, CO · May 1 – 3, 2026</div>
         </div>`
       };
       // Add attachment if present
@@ -4130,12 +4124,12 @@ async function sendChatEmailBlast(msg,from){
       await fetch(CFG.EMAIL_FN_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
         to:c.email,from:CFG.FROM_EMAIL,
         subject:`EBO Camp Announcement from ${from}`,
-        html:`<div style="max-width:420px;margin:0 auto;font-family:Arial,sans-serif;background:#111;border-radius:8px;overflow:hidden;">
-          <div style="background:#C4C4C4;padding:12px 16px;"><div style="color:#fff;font-size:14px;font-weight:700;letter-spacing:1px;">EBO CAMP ANNOUNCEMENT</div></div>
-          <div style="padding:16px;">
-            <p style="color:#aaa;font-size:11px;margin:0 0 8px;text-transform:uppercase;letter-spacing:.08em;">From ${from}</p>
-            <p style="color:#f0f0eb;font-size:13px;line-height:1.6;margin:0 0 14px;">${msg}</p>
-            <a href="https://officials-hub.github.io/ebo-camp/" style="display:inline-block;background:#C4C4C4;color:#000;font-weight:700;font-size:12px;padding:9px 20px;border-radius:6px;text-decoration:none;">Open Camp Portal →</a>
+        html:`<div style="max-width:480px;margin:0 auto;font-family:Arial,sans-serif;background:#fff;border:1px solid #e0ddd8;border-radius:10px;overflow:hidden;color:#1a1a1a">
+          <div style="background:#1a1a1a;padding:12px 18px;"><div style="color:#fff;font-size:14px;font-weight:700;letter-spacing:1px;">EBO CAMP ANNOUNCEMENT</div></div>
+          <div style="padding:18px;">
+            <p style="color:#888;font-size:11px;margin:0 0 8px;text-transform:uppercase;letter-spacing:.08em;">From ${from}</p>
+            <p style="color:#333;font-size:14px;line-height:1.7;margin:0 0 16px;">${msg}</p>
+            <a href="https://officials-hub.github.io/ebo-camp/" style="display:inline-block;background:#1a1a1a;color:#fff;font-weight:700;font-size:12px;padding:10px 22px;border-radius:6px;text-decoration:none;">Open Camp Portal →</a>
           </div>
         </div>`
       })});
