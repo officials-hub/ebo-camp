@@ -5800,11 +5800,14 @@ function filterCamperDrop(fieldId, query) {
   const sorted = [...campers].sort((a,b)=>(a.last_name||'').localeCompare(b.last_name||''));
   const filtered = q ? sorted.filter(c=>((c.last_name||'')+(c.first_name||'')).toLowerCase().includes(q)||(c.first_name+' '+c.last_name).toLowerCase().includes(q)) : sorted;
   drop.style.display = 'block';
+  // Render rows with text content only; the name is looked up by id at click
+  // time so apostrophes/quotes in the name (e.g. O'Connel) can never break
+  // the HTML attribute.
   drop.innerHTML = filtered.slice(0,25).map(c =>
     `<div style="padding:8px 12px;cursor:pointer;font-size:13px;color:#1a1a1a;border-bottom:1px solid #f0f0f0"
-      onmousedown="selectCamper('${fieldId}','${c.id}','${c.first_name} ${c.last_name}')"
+      onmousedown="selectCamper('${fieldId}','${c.id}')"
       onmouseover="this.style.background='#f5f0eb'" onmouseout="this.style.background=''"
-    >${c.last_name}, ${c.first_name}</div>`
+    >${escapeHtml((c.last_name||'')+', '+(c.first_name||''))}</div>`
   ).join('') || '<div style="padding:8px 12px;color:#999;font-size:13px">No results</div>';
 }
 
@@ -5812,6 +5815,11 @@ function selectCamper(fieldId, id, name) {
   // fieldId is like "c1_thu_1000AM_Court1"
   const hidden = document.getElementById(fieldId);
   if (hidden) hidden.value = id;
+  // Look the name up by id so we don't have to interpolate it into HTML.
+  if (!name) {
+    const c = campers.find(x => String(x.id) === String(id));
+    name = c ? ((c.first_name||'')+' '+(c.last_name||'')).trim() : '';
+  }
   // text input is c1i_ prefix
   const textId = fieldId.replace(/^(c[12345])_/, '$1i_');
   const text = document.getElementById(textId);
