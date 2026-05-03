@@ -590,6 +590,13 @@ async function enableNotifications(){
 <label class="fl">PIN</label><input class="fi fi-pin" id="lcPin" type="password" placeholder="••••" maxlength="6" inputmode="numeric" autocomplete="off">
 <button class="lbtn" type="button" onclick="loginCamper()">ENTER CAMP</button>
 <div class="lerr" id="lcErr"></div>
+<button type="button" onclick="toggleForgotPin()" style="background:none;border:none;color:var(--or);font-size:13px;text-decoration:underline;cursor:pointer;padding:8px 0;margin-top:4px;font-family:'Source Sans 3',sans-serif">Forgot your PIN?</button>
+<div id="forgotPinPanel" style="display:none;background:rgba(255,255,255,.6);border:1px solid #e6dfd4;border-radius:10px;padding:12px;margin-top:8px">
+  <div style="font-size:12px;color:#555;margin-bottom:8px;line-height:1.45">Enter the email you registered with and we'll send your PIN.</div>
+  <input class="fi" id="forgotPinEmail" type="email" placeholder="you@example.com" autocomplete="email" style="margin-bottom:8px">
+  <button type="button" id="forgotPinBtn" onclick="sendCamperPin()" class="lbtn" style="width:100%">EMAIL ME MY PIN</button>
+  <div id="forgotPinStatus" style="font-size:12px;color:#555;margin-top:8px;text-align:center;min-height:16px"></div>
+</div>
 </div>
 <div class="lform" id="lfStaff" style="display:none">
 <label class="fl">Username</label><input class="fi" id="lsUser" placeholder="username" autocomplete="off">
@@ -652,6 +659,10 @@ async function enableNotifications(){
     <button class="more-item" id="cb-clinicians" onclick="cView('clinicians');closeMoreC()" type="button">
       <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       Clinicians
+    </button>
+    <button class="more-item" id="cb-signout" onclick="closeMoreC();logout()" type="button">
+      <svg viewBox="0 0 24 24" style="stroke:var(--red2)"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      <span style="color:var(--red2)">Sign Out</span>
     </button>
   </div>
 </div>
@@ -745,6 +756,10 @@ async function enableNotifications(){
     <button class="more-item" id="sb-history" onclick="sView('history');closeMoreS()" type="button">
       <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
       <span>My Evals</span>
+    </button>
+    <button class="more-item" id="sb-signout" onclick="closeMoreS();logout()" type="button">
+      <svg viewBox="0 0 24 24" style="stroke:var(--red2)"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      <span style="color:var(--red2)">Sign Out</span>
     </button>
   </div>
 </div>
@@ -886,6 +901,10 @@ async function enableNotifications(){
     <button class="admin-more-item" id="atab-settings" onclick="aTabMore('settings')" type="button">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       Settings
+    </button>
+    <button class="admin-more-item" id="atab-signout" onclick="closeAdminMoreMenu();logout()" type="button" style="color:var(--red2)">
+      <svg viewBox="0 0 24 24" style="stroke:var(--red2)"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
     </button>
   </div>
 </div>
@@ -1326,6 +1345,61 @@ let gameFilms=[],gameFilmCampers=[];
 let gfSelectedCampers=new Set();
 let _oembedCache={};
 let CU=null,CR=null; // current user, current role
+
+// ── PERSISTENT LOGIN ────────────────────────────────────
+// Older users were getting kicked back to the login screen every time the
+// app closed. Stash the role + record id in localStorage so subsequent
+// app opens auto-restore the session. Admin is intentionally NOT
+// persisted because the role can wipe data — admin must enter the
+// password every session.
+const _SESSION_KEY = 'eboSession';
+function saveSession(role, id){
+  if (role !== 'camper' && role !== 'staff') return; // never persist admin
+  try { localStorage.setItem(_SESSION_KEY, JSON.stringify({role, id: String(id)})); } catch(e){}
+}
+function clearSession(){
+  try { localStorage.removeItem(_SESSION_KEY); } catch(e){}
+}
+function readSession(){
+  try {
+    const raw = localStorage.getItem(_SESSION_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+    if (!s || (s.role !== 'camper' && s.role !== 'staff') || !s.id) return null;
+    return s;
+  } catch(e){ return null; }
+}
+// Synchronously hide the login screen if a session exists, before the
+// browser paints. Avoids a flash of the login form on returning users.
+(function _preHideLoginIfRestoring(){
+  if (!readSession()) return;
+  const ls = document.getElementById('loginScreen');
+  if (ls) ls.style.display = 'none';
+})();
+async function tryAutoLogin(){
+  const s = readSession();
+  if (!s) return false;
+  try { await loadAll(); } catch(e){ return false; }
+  let user = null;
+  if (s.role === 'camper') user = (campers||[]).find(c => String(c.id) === s.id);
+  else if (s.role === 'staff') user = (staffList||[]).find(x => String(x.id) === s.id);
+  if (!user) { clearSession(); return false; }
+  CU = user;
+  CR = s.role;
+  enterApp();
+  if (CR === 'camper') { try { checkFilmNotifOnLogin(); } catch(e){} }
+  return true;
+}
+// Boot: try to restore a session. If no session or the user was deleted,
+// fall back to the standard login screen.
+window.addEventListener('load', () => {
+  tryAutoLogin().then(restored => {
+    if (!restored) {
+      const ls = document.getElementById('loginScreen');
+      if (ls) ls.style.display = 'flex';
+    }
+  });
+});
 let ynState={top10:null};
 let ynStateAe={top10:null};
 let rankClinician=null;
@@ -1576,7 +1650,9 @@ async function loginCamper(){
   await loadAll();
   const c=campers.find(x=>x.last_name.toLowerCase()===last&&x.pin===pin);
   if(!c){showLoginErr('lcErr','Invalid credentials.');return;}
-  CU=c;CR='camper';enterApp();
+  CU=c;CR='camper';
+  saveSession('camper', c.id);
+  enterApp();
   checkFilmNotifOnLogin();
 }
 async function loginStaff(){
@@ -1586,7 +1662,9 @@ async function loginStaff(){
   await loadAll();
   const s=staffList.find(x=>x.username.toLowerCase()===user&&x.password===pass);
   if(!s){showLoginErr('lsErr','Invalid credentials.');return;}
-  CU=s;CR='staff';enterApp();
+  CU=s;CR='staff';
+  saveSession('staff', s.id);
+  enterApp();
 }
 async function loginAdmin(){
   const pass=document.getElementById('laPass').value;
@@ -1597,7 +1675,85 @@ async function loginAdmin(){
   CU={first_name:'Admin',last_name:''};CR='admin';enterApp();
 }
 function showLoginErr(id,msg){const e=document.getElementById(id);e.textContent=msg;e.style.display='block';}
+
+// ── FORGOT PIN ──────────────────────────────────────────
+function toggleForgotPin(){
+  const p = document.getElementById('forgotPinPanel');
+  if (!p) return;
+  const showing = p.style.display !== 'none';
+  p.style.display = showing ? 'none' : 'block';
+  if (!showing) {
+    const inp = document.getElementById('forgotPinEmail');
+    setTimeout(() => inp && inp.focus(), 50);
+    document.getElementById('forgotPinStatus').textContent = '';
+  }
+}
+async function sendCamperPin(){
+  const status = document.getElementById('forgotPinStatus');
+  const btn = document.getElementById('forgotPinBtn');
+  const inp = document.getElementById('forgotPinEmail');
+  const email = (inp?.value || '').trim().toLowerCase();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    status.style.color = 'var(--red2)';
+    status.textContent = 'Enter a valid email.';
+    return;
+  }
+  btn.disabled = true;
+  const oldLabel = btn.textContent;
+  btn.textContent = 'SENDING...';
+  status.style.color = '#555';
+  status.textContent = '';
+  try {
+    // Direct Supabase lookup so we don't need a logged-in session.
+    const rows = await supa('campers','GET',null,
+      `?email=eq.${encodeURIComponent(email)}&select=first_name,last_name,pin,email`);
+    const camper = Array.isArray(rows) ? rows[0] : null;
+    if (!camper || !camper.pin) {
+      status.style.color = 'var(--red2)';
+      status.textContent = "We couldn't find a camper with that email. Check the spelling or contact your camp admin.";
+      btn.disabled = false;
+      btn.textContent = oldLabel;
+      return;
+    }
+    const html = `<div style="max-width:520px;margin:0 auto;background:#fff;border-radius:12px;padding:24px;font-family:Arial,sans-serif;color:#1a1a1a;border:1px solid #e0ddd8">
+      <h2 style="color:#000;margin:0 0 12px;font-size:20px">${CFG.CAMP_NAME}</h2>
+      <p style="color:#333;margin:0 0 16px">Hi ${camper.first_name||''}, here is your camper PIN for the EBO Camp app:</p>
+      <div style="background:#f7f1ea;border:1px solid #e6dfd4;border-radius:10px;padding:18px;text-align:center;margin:0 0 16px">
+        <div style="font-size:11px;color:#888;letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px">Your PIN</div>
+        <div style="font-family:Oswald,Arial,sans-serif;font-size:32px;letter-spacing:.18em;color:#000">${camper.pin}</div>
+      </div>
+      <p style="color:#555;font-size:13px;margin:0">Sign in by entering your last name and this PIN. If you didn't request this, you can ignore the email.</p>
+      <p style="color:#999;font-size:11px;margin-top:20px">Elevate Basketball Officiating Camp</p>
+    </div>`;
+    const res = await fetch(CFG.EMAIL_FN_URL, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        to: camper.email, from: CFG.FROM_EMAIL,
+        subject: `${CFG.CAMP_NAME} — Your Camper PIN`,
+        html
+      })
+    });
+    if (!res.ok) {
+      status.style.color = 'var(--red2)';
+      status.textContent = "We found you, but the email didn't go out. Try again in a minute.";
+      btn.disabled = false; btn.textContent = oldLabel;
+      return;
+    }
+    status.style.color = 'var(--grn)';
+    status.textContent = '✓ Check your email for your PIN.';
+    btn.textContent = 'SENT';
+    // Re-enable after a few seconds in case they need to send again.
+    setTimeout(() => { btn.disabled = false; btn.textContent = oldLabel; }, 5000);
+  } catch (e) {
+    console.error('Forgot PIN error', e);
+    status.style.color = 'var(--red2)';
+    status.textContent = 'Something went wrong. Try again or contact your camp admin.';
+    btn.disabled = false; btn.textContent = oldLabel;
+  }
+}
 function logout(){
+  clearSession();
   document.getElementById('loginScreen').style.display='flex';
   document.getElementById('app').style.display='none';
   document.querySelectorAll('.portal').forEach(p=>p.classList.remove('on'));
