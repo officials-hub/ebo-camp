@@ -24,9 +24,13 @@ self.addEventListener('push', (event) => {
   // root on Netlify. An absolute "/" in the payload would otherwise dump
   // users at the GitHub Pages org apex (404).
   const scope = self.registration.scope;
+  // Treat empty or "/" or "./" as "open the app root" (the SW scope). An
+  // absolute "/" in the payload would otherwise resolve to the origin
+  // root, which on GitHub Pages is the org apex 404.
+  const isAppRoot = (v) => !v || v === '/' || v === './';
   const resolve = (val, fallback) => {
-    if (!val) return new URL(fallback, scope).href;
-    try { return new URL(val, scope).href; } catch (e) { return new URL(fallback, scope).href; }
+    if (isAppRoot(val)) return isAppRoot(fallback) ? scope : new URL(fallback, scope).href;
+    try { return new URL(val, scope).href; } catch (e) { return scope; }
   };
 
   const title = data.title || 'EBO Camp';
