@@ -3301,7 +3301,20 @@ function renderAdminRankings(){
   else sorted.sort((a,b)=>(b.catAverages[rankSort]||0)-(a.catAverages[rankSort]||0));
   const con=document.getElementById('arankcon');
   if(!sorted.length){con.innerHTML='<div class="empty"><span class="ei">'+(rankSort==='top10'?'⭐':'📊')+'</span><div class="et">'+(rankSort==='top10'?'No Top 10 campers yet':'No evaluations yet')+'</div></div>';return;}
-  con.innerHTML=sorted.map((e,idx)=>{const rc=idx<3?'r'+(idx+1):'';const bars=CFG.CATS.map(cat=>{const v=e.catAverages[cat]||0;const p=(v/CFG.SCALE_MAX)*100;return`<div class="rank-bar-row"><span class="rank-bar-lbl">${cat.length>10?cat.substring(0,10):cat}</span><div class="rank-bar-bg"><div class="rank-bar-fill" style="width:${p}%"></div></div><span class="rank-bar-val">${v.toFixed(1)}</span></div>`;}).join('');let tags='';if(e.top10)tags+='<span class="bdg bdgold">Top 10</span>';return`<div class="rank-card ${rc}"><div class="rank-num">${idx+1}</div><div class="rank-info"><div class="rank-name">${e.camper.first_name} ${e.camper.last_name}</div><div class="rank-det">${e.evalCount} eval${e.evalCount!==1?'s':''} · ${e.clinicians.join(', ')}</div>${tags?`<div class="rank-tags">${tags}</div>`:''}<div class="rank-bars">${bars}</div></div><div class="rank-avg">${e.overall.toFixed(1)}</div></div>`;}).join('');
+  con.innerHTML=sorted.map((e,idx)=>{const rc=idx<3?'r'+(idx+1):'';const bars=CFG.CATS.map(cat=>{const v=e.catAverages[cat]||0;const p=(v/CFG.SCALE_MAX)*100;return`<div class="rank-bar-row"><span class="rank-bar-lbl">${cat.length>10?cat.substring(0,10):cat}</span><div class="rank-bar-bg"><div class="rank-bar-fill" style="width:${p}%"></div></div><span class="rank-bar-val">${v.toFixed(1)}</span></div>`;}).join('');let tags='';if(e.top10)tags+='<span class="bdg bdgold">Top 10</span>';
+    // When filtered by clinician, surface that clinician's per-camper notes
+    // (the "Individual notes" textarea) so admin can read what they wrote.
+    let notesBlock='';
+    if(rankClinician){
+      const notes=evaluations
+        .filter(ev=>String(ev.camper_id)===String(e.camper.id)&&ev.clinician_name===rankClinician&&(ev.comments||'').trim())
+        .map(ev=>{
+          const meta=[ev.eval_date,ev.court?'Court '+ev.court:'',ev.eval_time].filter(Boolean).join(' · ');
+          return `<div style="background:var(--gray2);border:1px solid var(--b2);border-radius:var(--rs);padding:8px 10px;margin-top:6px"><div style="font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--tx3);text-transform:uppercase;margin-bottom:4px">${meta||'Notes'}</div><div style="font-size:13px;color:var(--tx);line-height:1.5;white-space:pre-wrap">${escapeHtml(ev.comments)}</div></div>`;
+        }).join('');
+      if(notes) notesBlock=`<div style="margin-top:8px">${notes}</div>`;
+    }
+    return`<div class="rank-card ${rc}"><div class="rank-num">${idx+1}</div><div class="rank-info"><div class="rank-name">${e.camper.first_name} ${e.camper.last_name}</div><div class="rank-det">${e.evalCount} eval${e.evalCount!==1?'s':''} · ${e.clinicians.join(', ')}</div>${tags?`<div class="rank-tags">${tags}</div>`:''}<div class="rank-bars">${bars}</div>${notesBlock}</div><div class="rank-avg">${e.overall.toFixed(1)}</div></div>`;}).join('');
 }
 
 // ═══ SETTINGS ═══
