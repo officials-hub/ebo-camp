@@ -2259,9 +2259,14 @@ function clinicianEvalProgress(clinicianName, opts){
   const target = norm(clinicianName);
   // Find every clinician id that matches this name (defensive — usually 1).
   const clIds = clinicians.filter(c => norm(c.name) === target).map(c => String(c.id));
-  if (!clIds.length) return { totalAssigned: 0, totalSubmitted: 0, totalPast: 0, missingPast: 0, missingPastSlots: [] };
+  if (!clIds.length) return { totalAssigned: 0, totalSubmitted: 0, totalPast: 0, missingPast: 0, missingPastSlots: [], readySlots: [] };
   let totalAssigned = 0, totalSubmitted = 0, totalPast = 0, missingPast = 0;
   const missingPastSlots = [];
+  // "Ready" slots are not yet done, but every assigned camper either has all
+  // 7 categories filled, was already submitted, or was marked absent — i.e.
+  // the clinician left it in_progress when really it's complete. Admin can
+  // flip these to submitted in one click.
+  const readySlots = [];
   for (const s of scheduleData) {
     const assignedClins = [s.clinician_id, s.clinician_2_id, s.clinician_3_id, s.clinician_4_id]
       .filter(Boolean).map(String);
@@ -2281,6 +2286,17 @@ function clinicianEvalProgress(clinicianName, opts){
     // clinician about a camper who never showed up.
     const allSubmitted = camperIds.every(cid => slotEvals.find(e => String(e.camper_id) === String(cid) && (e.status === 'submitted' || e.status === 'absent')));
     if (allSubmitted) totalSubmitted++;
+    else {
+      // Check if the slot is fully scored but never submitted.
+      const allReady = camperIds.every(cid => {
+        const ev = slotEvals.find(e => String(e.camper_id) === String(cid));
+        if (!ev) return false;
+        if (ev.status === 'submitted' || ev.status === 'absent') return true;
+        return CFG.CATS.every(cat => ev.scores?.[catKey(cat)] != null);
+      });
+      const hasInProgress = slotEvals.some(e => e.status === 'in_progress');
+      if (allReady && hasInProgress) readySlots.push(s);
+    }
     // Decide whether the slot is "in the past enough" to count as missing.
     if (date) {
       const slotStart = new Date(`${date}T00:00:00`);
@@ -2291,7 +2307,7 @@ function clinicianEvalProgress(clinicianName, opts){
       }
     }
   }
-  return { totalAssigned, totalSubmitted, totalPast, missingPast, missingPastSlots };
+  return { totalAssigned, totalSubmitted, totalPast, missingPast, missingPastSlots, readySlots };
 }
 
 // Send a single aggregated reminder email to one clinician with N missing
@@ -2409,9 +2425,15 @@ function renderEvalTrackerByClinician(){
     const rem = r.missingPast > 0 && hasEmail
       ? `<button class="btn bsec bsm" style="flex-shrink:0" onclick="event.stopPropagation();remindOneClinician('${r.name.replace(/'/g, "\\'")}')" type="button">✉️ Remind</button>`
       : '';
+    const close = r.readySlots && r.readySlots.length
+      ? `<button class="btn bor bsm" style="flex-shrink:0" onclick="event.stopPropagation();closeOutClinicianReady('${r.name.replace(/'/g, "\\'")}')" type="button" title="Slots fully scored but never submitted">✓ Close ${r.readySlots.length}</button>`
+      : '';
     const pastNote = r.missingPast > 0
       ? `<span style="color:var(--red2);font-weight:700">· ${r.missingPast} past-due</span>`
       : (r.totalSubmitted === r.totalAssigned ? '<span style="color:var(--grn)">· all done ✓</span>' : '');
+    const readyNote = r.readySlots && r.readySlots.length
+      ? `<span style="color:var(--or);font-weight:700"> · ${r.readySlots.length} ready to close</span>`
+      : '';
     const subNote = !hasEmail ? '<span style="color:var(--tx3)"> · no email on file</span>' : '';
     html += '<div style="background:var(--gray);border:1px solid var(--b2);border-radius:var(--r);padding:10px 12px">'
       + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">'
@@ -2419,13 +2441,14 @@ function renderEvalTrackerByClinician(){
       +     subBadge
       +     '<span onclick="openClinicianDetail(\''+r.id+'\')" style="font-size:13px;font-weight:600;color:var(--tx);cursor:pointer;text-decoration:underline;text-decoration-color:var(--or);text-decoration-thickness:1px;text-underline-offset:3px">'+r.name+'</span>'
       +   '</span>'
-      +   '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0">'
+      +   '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">'
       +     '<span style="font-family:\'Oswald\',sans-serif;font-size:14px;color:var(--or)">'+r.totalSubmitted+' / '+r.totalAssigned+'</span>'
+      +     close
       +     rem
       +   '</div>'
       + '</div>'
       + '<div style="height:5px;background:var(--gray3);border-radius:3px;overflow:hidden;margin-bottom:4px"><div style="height:100%;width:'+pct+'%;background:'+barColor+';border-radius:3px"></div></div>'
-      + '<div style="font-size:10px;color:var(--tx3)">'+pct+'% complete '+pastNote+subNote+'</div>'
+      + '<div style="font-size:10px;color:var(--tx3)">'+pct+'% complete '+pastNote+readyNote+subNote+'</div>'
       + '</div>';
   });
   html += '</div>';
@@ -2452,6 +2475,55 @@ function renderMyEvalProgress(profile){
     <div style="height:6px;background:var(--gray3);border-radius:3px;overflow:hidden;margin-bottom:6px"><div style="height:100%;width:${pct}%;background:${barColor};border-radius:3px;transition:width .3s"></div></div>
     <div style="font-size:11px;color:var(--tx3)">${pct}% complete · ${note}</div>
   </div>`;
+}
+
+// Force-submit any slot for a clinician that's fully scored but still
+// in_progress (the clinician filled everything out but never tapped Submit).
+// Shows a confirm modal listing which slots will be closed, flips the rows to
+// status='submitted', and sends the same camper push notifications a normal
+// submit would.
+async function closeOutClinicianReady(name){
+  const p = clinicianEvalProgress(name);
+  if (!p.readySlots.length){ toast('No ready slots to close out for this clinician'); return; }
+  const list = p.readySlots
+    .map(s => `  • ${s.day.replace(/, 2026/,'')} · ${s.time_slot} · ${s.court}`)
+    .join('\n');
+  const ok = await cf(`Close out ${p.readySlots.length} ready slot${p.readySlots.length===1?'':'s'} for ${name}?\n\n${list}\n\nCampers in submitted slots will get a push notification.`,'Close Out','Cancel');
+  if (!ok) return;
+  let closed = 0, failed = 0;
+  const camperIdsToNotify = new Set();
+  for (const s of p.readySlots){
+    const date = SCH_DAY_TO_DATE[s.day] || null;
+    const slotEvals = evaluations.filter(e =>
+      e.clinician_name === name &&
+      e.eval_date === date &&
+      e.court === s.court &&
+      e.eval_time === s.time_slot
+    );
+    for (const e of slotEvals){
+      if (e.status !== 'in_progress') continue;
+      const vs = CFG.CATS.map(cat => e.scores?.[catKey(cat)]).filter(v => v != null);
+      const overall = vs.length ? vs.reduce((a,b)=>a+b,0)/vs.length : null;
+      try{
+        await supa('evaluations','PATCH', { status:'submitted', overall_score: overall }, `?id=eq.${e.id}`);
+        closed++;
+        camperIdsToNotify.add(String(e.camper_id));
+      }catch(err){
+        console.error('closeOut PATCH failed', e.id, err);
+        failed++;
+      }
+    }
+  }
+  await loadAll();
+  // Notify the campers whose evals just went live.
+  for (const cid of camperIdsToNotify){
+    try{ await pushEvalToCamper(cid, null); }catch(_){ }
+    await new Promise(r=>setTimeout(r,150));
+  }
+  renderEvalTracker();
+  toast(failed
+    ? `✓ Closed ${closed} eval${closed===1?'':'s'} · ${failed} failed`
+    : `✓ Closed ${closed} eval${closed===1?'':'s'} for ${name}`);
 }
 
 // Single-clinician reminder (Remind button next to a row in the tracker).
