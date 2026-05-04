@@ -1884,7 +1884,9 @@ function cView(v){
 }
 async function renderCamperMyEvals(){
   const con=document.getElementById('cMyEvalsList');
-  const myE=evaluations.filter(e=>e.camper_id===CU.id).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+  // Hide absent rows from the camper view — there's nothing to show, and a
+  // blank "DNP" card just confuses them. Admins still see absent rows.
+  const myE=evaluations.filter(e=>e.camper_id===CU.id && e.status!=='absent').sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
   if(!myE.length){con.innerHTML='<div class="empty"><span class="ei">📋</span><div class="et">No Evaluations Yet</div><div style="font-size:12px;color:var(--tx3);margin-top:6px">Your evaluations will appear here as clinicians submit them.</div></div>';return;}
   // Privacy: only fetch crew notes for slots this camper played in.
   // Multiple clinicians per game means multiple crew notes possible per slot.
@@ -2003,7 +2005,12 @@ function renderStaffHistory(){
     const dt=new Date(e.created_at).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
     const row=document.createElement('div');
     row.style.cssText='background:var(--gray);border:1px solid var(--b2);border-radius:var(--r);padding:12px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:10px';
-    row.innerHTML=`<div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:600;color:var(--tx)">${c.first_name} ${c.last_name}</div><div style="font-size:11px;color:var(--tx3);margin-top:2px">${e.eval_date||''} · Court ${e.court||'—'}</div><div style="font-size:11px;color:var(--tx3)">${dt}</div><button class="btn bsec bsm" style="margin-top:8px" onclick="editStaffEval('${e.id}')">Edit</button></div><div style="text-align:right;flex-shrink:0"><div style="font-family:Oswald,sans-serif;font-size:32px;color:var(--or);line-height:1">${(e.overall_score||0).toFixed(1)}</div><div style="font-size:9px;font-weight:700;letter-spacing:.08em;color:var(--tx3)">/ ${CFG.SCALE_MAX}</div></div>`;
+    if (e.status === 'absent') {
+      const reason = (e.comments||'').trim();
+      row.innerHTML=`<div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:600;color:var(--tx)">${c.first_name} ${c.last_name} <span style="font-size:10px;color:var(--red2);font-weight:700;letter-spacing:.08em;margin-left:4px">· DNP</span></div><div style="font-size:11px;color:var(--tx3);margin-top:2px">${e.eval_date||''} · Court ${e.court||'—'}</div><div style="font-size:11px;color:var(--tx3)">${dt}</div>${reason?`<div style="font-size:11px;color:var(--tx2);margin-top:4px">Reason: ${escapeHtml(reason)}</div>`:''}</div><div style="text-align:right;flex-shrink:0;font-size:24px">🚫</div>`;
+    } else {
+      row.innerHTML=`<div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:600;color:var(--tx)">${c.first_name} ${c.last_name}</div><div style="font-size:11px;color:var(--tx3);margin-top:2px">${e.eval_date||''} · Court ${e.court||'—'}</div><div style="font-size:11px;color:var(--tx3)">${dt}</div><button class="btn bsec bsm" style="margin-top:8px" onclick="editStaffEval('${e.id}')">Edit</button></div><div style="text-align:right;flex-shrink:0"><div style="font-family:Oswald,sans-serif;font-size:32px;color:var(--or);line-height:1">${(e.overall_score||0).toFixed(1)}</div><div style="font-size:9px;font-weight:700;letter-spacing:.08em;color:var(--tx3)">/ ${CFG.SCALE_MAX}</div></div>`;
+    }
     con.appendChild(row);
   });
 }
@@ -2133,7 +2140,7 @@ async function emailEvalToCamper(camperId,statusEl){
     return false;
   }
   if(statusEl)statusEl.innerHTML+='<div class="email-pend">Sending email...</div>';
-  const camperEvals=evaluations.filter(e=>e.camper_id===camperId);
+  const camperEvals=evaluations.filter(e=>e.camper_id===camperId && e.status!=='absent');
   // Pull crew notes for any of this camper's slots — array per slot (one entry per clinician)
   const crewBySlot = {};
   try {
@@ -2233,8 +2240,8 @@ function liveEvalGameStatus(scheduleRow, allEvals){
     e.clinician_name===myName && e.eval_date===date && e.court===scheduleRow.court && e.eval_time===scheduleRow.time_slot
   );
   if (!slotEvals.length) return 'not_started';
-  const allSubmitted = camperIds.every(cid => slotEvals.find(e => String(e.camper_id)===String(cid) && e.status==='submitted'));
-  if (allSubmitted) return 'submitted';
+  const allDone = camperIds.every(cid => slotEvals.find(e => String(e.camper_id)===String(cid) && (e.status==='submitted' || e.status==='absent')));
+  if (allDone) return 'submitted';
   return 'in_progress';
 }
 
@@ -2269,7 +2276,10 @@ function clinicianEvalProgress(clinicianName, opts){
       e.court === s.court &&
       e.eval_time === s.time_slot
     );
-    const allSubmitted = camperIds.every(cid => slotEvals.find(e => String(e.camper_id) === String(cid) && e.status === 'submitted'));
+    // A slot is "done" if every assigned camper has either a submitted eval
+    // or was marked Did Not Play — we don't want to keep nagging the
+    // clinician about a camper who never showed up.
+    const allSubmitted = camperIds.every(cid => slotEvals.find(e => String(e.camper_id) === String(cid) && (e.status === 'submitted' || e.status === 'absent')));
     if (allSubmitted) totalSubmitted++;
     // Decide whether the slot is "in the past enough" to count as missing.
     if (date) {
@@ -2519,8 +2529,12 @@ async function openLiveEvalGame(rowOrIdx){
       `?select=*&clinician_name=eq.${encodeURIComponent(matched.name)}&eval_date=eq.${date}&court=eq.${encodeURIComponent(g.court)}&eval_time=eq.${encodeURIComponent(g.time_slot)}`);
     if (Array.isArray(crews) && crews.length) _liveEval.crew = { id:crews[0].id, note:crews[0].note||'', status:crews[0].status||'in_progress' };
   } catch(e){}
-  // Determine submitted state — true if every camper's eval has status='submitted'
-  _liveEval.isSubmitted = camps.length>0 && camps.every(c => _liveEval.evals[String(c.id)]?.status==='submitted');
+  // Determine submitted state — true if every camper's eval is final
+  // (either submitted with scores or marked absent).
+  _liveEval.isSubmitted = camps.length>0 && camps.every(c => {
+    const st = _liveEval.evals[String(c.id)]?.status;
+    return st === 'submitted' || st === 'absent';
+  });
   renderLiveEvalGameView();
 }
 
@@ -2531,11 +2545,14 @@ function closeLiveEvalGame(){
 
 function liveEvalCamperStatusIcon(camperId){
   const ev=_liveEval.evals[String(camperId)]; if(!ev) return '○';
+  if (ev.status === 'absent') return '🚫';
   const filled = CFG.CATS.filter(c => ev.scores?.[catKey(c)]!=null).length;
   if (filled===CFG.CATS.length) return '●';
   if (filled>0) return '◐';
   return '○';
 }
+
+const ABSENT_REASONS = ['No-show', 'Injured / left early', 'Other'];
 
 function liveEvalAvg(camperId){
   const ev=_liveEval.evals[String(camperId)]; if(!ev) return null;
@@ -2560,7 +2577,8 @@ function renderLiveEvalGameView(){
     const cls = i===_liveEval.activeIdx ? 'le-tab on' : 'le-tab';
     return `<button type="button" class="${cls}" onclick="liveEvalSetTab(${i})">${icon} ${escapeHtml(c.first_name)}</button>`;
   }).join('');
-  const catBlocks = active ? CFG.CATS.map((cat,i)=>{
+  const isAbsent = active && evRow.status === 'absent';
+  const catBlocks = active && !isAbsent ? CFG.CATS.map((cat,i)=>{
     const v=evRow.scores?.[catKey(cat)];
     const btns=[1,2,3,4].map(n=>{
       const on = v===n ? 'on':'';
@@ -2569,10 +2587,17 @@ function renderLiveEvalGameView(){
     return `<div class="le-row"><div class="le-row-lbl">${cat}</div><div class="le-row-btns">${btns}</div></div>`;
   }).join('') : '';
   const top10 = evRow.scores?.top10;
-  const top10Btns = active ? `<div class="le-row" style="margin-top:6px"><div class="le-row-lbl">Top 10?</div><div class="le-row-btns">
+  const top10Btns = active && !isAbsent ? `<div class="le-row" style="margin-top:6px"><div class="le-row-lbl">Top 10?</div><div class="le-row-btns">
     <button type="button" class="le-yn ${top10===true?'yes':''}" ${submitted?'disabled':''} onclick="liveEvalSetTop10('${active.id}',true)">Yes</button>
     <button type="button" class="le-yn ${top10===false?'no':''}" ${submitted?'disabled':''} onclick="liveEvalSetTop10('${active.id}',false)">No</button>
   </div></div>` : '';
+  const absentChips = active && isAbsent ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0">${ABSENT_REASONS.map(r=>{
+    const on = (evRow.comments||'').trim() === r ? 'on' : '';
+    return `<button type="button" class="fchip ${on}" ${submitted?'disabled':''} onclick="liveEvalSetAbsentReason('${active.id}','${r.replace(/'/g,"\\'")}')">${r}</button>`;
+  }).join('')}</div>` : '';
+  const absentToggle = active && !submitted ? (isAbsent
+    ? `<button type="button" class="btn bsec bsm" style="margin-left:auto" onclick="liveEvalToggleAbsent('${active.id}')">↩ Restore eval</button>`
+    : `<button type="button" class="btn bsec bsm" style="margin-left:auto" onclick="liveEvalToggleAbsent('${active.id}')">🚫 Did not play</button>`) : '';
   const savedTxt = _liveEval.lastSavedAt ? `Saved ${liveEvalAgo(_liveEval.lastSavedAt)}` : (submitted?'Submitted':'Not saved yet');
   view.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px">
@@ -2590,17 +2615,19 @@ function renderLiveEvalGameView(){
 
     ${active ? `
     <div class="eval-card" style="padding:12px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div style="font-family:'Oswald',sans-serif;font-size:18px;color:var(--tx)">${escapeHtml(active.first_name+' '+active.last_name)}</div>
-        <div style="font-size:11px;color:var(--tx3)">Avg <span style="color:var(--or);font-weight:700">${avg||'—'}</span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+        <div style="font-family:'Oswald',sans-serif;font-size:18px;color:var(--tx)">${escapeHtml(active.first_name+' '+active.last_name)}${isAbsent?' <span style="font-size:11px;color:var(--red2);font-weight:700;letter-spacing:.08em;margin-left:6px">· DID NOT PLAY</span>':''}</div>
+        ${isAbsent?'':`<div style="font-size:11px;color:var(--tx3)">Avg <span style="color:var(--or);font-weight:700">${avg||'—'}</span></div>`}
+        ${absentToggle}
       </div>
+      ${isAbsent ? `<div style="font-size:12px;color:var(--tx2);margin-bottom:4px">Reason</div>${absentChips}` : ''}
       ${catBlocks}
       ${top10Btns}
       <div style="margin-top:12px">
-        <div style="font-size:12px;color:var(--tx2);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between">Notes for ${escapeHtml(active.first_name)}<button type="button" id="leCamperMic" class="mic-btn" onclick="toggleVoiceInput('leCamperNotes','leCamperMic')" title="Voice to text">🎤</button></div>
-        <textarea class="ftarea" id="leCamperNotes" placeholder="Individual notes (only ${escapeHtml(active.first_name)} sees these)..." ${submitted?'disabled':''} oninput="liveEvalNotesInput()" onblur="liveEvalNotesBlur()">${escapeHtml(evRow.comments||'')}</textarea>
+        <div style="font-size:12px;color:var(--tx2);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between">${isAbsent?'Notes (optional)':`Notes for ${escapeHtml(active.first_name)}`}<button type="button" id="leCamperMic" class="mic-btn" onclick="toggleVoiceInput('leCamperNotes','leCamperMic')" title="Voice to text">🎤</button></div>
+        <textarea class="ftarea" id="leCamperNotes" placeholder="${isAbsent?'Add any context (e.g. came late, hurt ankle in 2nd half)...':`Individual notes (only ${escapeHtml(active.first_name)} sees these)...`}" ${submitted?'disabled':''} oninput="liveEvalNotesInput()" onblur="liveEvalNotesBlur()">${escapeHtml(evRow.comments||'')}</textarea>
       </div>
-      ${submitted ? `<div style="margin-top:10px"><button type="button" class="btn bsec bsm" style="width:100%" onclick="liveEvalEditExisting('${active.id}')">✏️ Edit individual eval</button></div>` : ''}
+      ${submitted && !isAbsent ? `<div style="margin-top:10px"><button type="button" class="btn bsec bsm" style="width:100%" onclick="liveEvalEditExisting('${active.id}')">✏️ Edit individual eval</button></div>` : ''}
     </div>` : '<div class="empty"><span class="ei">📋</span><div class="et">No campers in this game</div></div>'}
 
     ${submitted ? `<div style="margin-top:12px;background:var(--gray2);border:1px solid var(--b2);border-radius:var(--r);padding:12px;text-align:center;font-size:12px;color:var(--tx2)">🔒 This game is locked. Use "Edit individual eval" to make changes.</div>`
@@ -2642,6 +2669,28 @@ function liveEvalSetTop10(camperId, val){
   if (_liveEval.isSubmitted) return;
   const ev = liveEvalEnsureEval(camperId);
   ev.scores = { ...(ev.scores||{}), top10: val };
+  liveEvalSaveEvalRow(camperId);
+  renderLiveEvalGameView();
+}
+
+function liveEvalToggleAbsent(camperId){
+  if (_liveEval.isSubmitted) return;
+  const ev = liveEvalEnsureEval(camperId);
+  if (ev.status === 'absent') {
+    ev.status = 'in_progress';
+  } else {
+    ev.status = 'absent';
+    ev.scores = {};
+  }
+  liveEvalSaveEvalRow(camperId);
+  renderLiveEvalGameView();
+}
+
+function liveEvalSetAbsentReason(camperId, reason){
+  if (_liveEval.isSubmitted) return;
+  const ev = liveEvalEnsureEval(camperId);
+  // Toggle off if the same chip is tapped again
+  ev.comments = (ev.comments||'').trim() === reason ? '' : reason;
   liveEvalSaveEvalRow(camperId);
   renderLiveEvalGameView();
 }
@@ -2692,19 +2741,20 @@ function liveEvalCancelIdleSave(key){
 async function liveEvalSaveEvalRow(camperId){
   const g = _liveEval.game; if(!g) return;
   const ev = liveEvalEnsureEval(camperId);
+  const isAbsent = ev.status === 'absent';
   // Compute overall_score from filled categories (existing schema convention)
   const vs = CFG.CATS.map(c => ev.scores?.[catKey(c)]).filter(v => v!=null);
-  const overall = vs.length ? (vs.reduce((a,b)=>a+b,0)/vs.length) : null;
+  const overall = isAbsent ? null : (vs.length ? (vs.reduce((a,b)=>a+b,0)/vs.length) : null);
   const payload = {
     camper_id: camperId,
     clinician_name: g.clinicianName,
     eval_date: g.date,
     court: g.court,
     eval_time: g.time,
-    scores: ev.scores || {},
+    scores: isAbsent ? {} : (ev.scores || {}),
     comments: ev.comments || '',
     overall_score: overall,
-    status: 'in_progress'
+    status: isAbsent ? 'absent' : 'in_progress'
   };
   try{
     if (ev.id){
@@ -2757,30 +2807,39 @@ async function liveEvalSaveCrewNote(){
 
 async function liveEvalSubmit(){
   const g = _liveEval.game; if (!g) return;
-  // Validate: every camper must have all 7 categories scored
+  // Validate: every non-absent camper must have all 7 categories scored.
+  // Absent campers are skipped from scoring but still get a row written so
+  // the slot can be closed out.
   const missing = [];
   g.campers.forEach(c => {
     const ev = _liveEval.evals[String(c.id)];
+    if (ev && ev.status === 'absent') return;
     const filled = ev ? CFG.CATS.filter(cat => ev.scores?.[catKey(cat)]!=null).length : 0;
     if (filled < CFG.CATS.length) missing.push(c.first_name+' '+c.last_name);
   });
   if (missing.length){
-    toast('Score all 7 categories for: '+missing.join(', '), true);
+    toast('Score all 7 categories (or mark Did Not Play) for: '+missing.join(', '), true);
     return;
   }
-  const ok = await cf(`Submit evaluations for ${g.campers.length} camper${g.campers.length===1?'':'s'}? Each camper will get a push notification that a new eval was posted.`,'Submit','Cancel');
+  const absentCount = g.campers.filter(c => _liveEval.evals[String(c.id)]?.status === 'absent').length;
+  const scoredCount = g.campers.length - absentCount;
+  const summary = absentCount
+    ? `${scoredCount} eval${scoredCount===1?'':'s'} + ${absentCount} marked DNP`
+    : `${g.campers.length} camper${g.campers.length===1?'':'s'}`;
+  const ok = await cf(`Submit ${summary}? Scored campers will get a push notification that a new eval was posted.`,'Submit','Cancel');
   if (!ok) return;
   const btn = document.getElementById('leSubmitBtn'); if (btn){ btn.disabled=true; btn.innerHTML='<span class="spinner"></span>'; }
   // Flush any pending saves
   Object.keys(_liveEval.saveTimers).forEach(k => liveEvalCancelIdleSave(k));
   try{
-    // Save final state of every camper as submitted
+    // Save final state of every camper as submitted (or absent)
     for (const c of g.campers){
       const ev = liveEvalEnsureEval(c.id);
-      ev.status = 'submitted';
+      const wasAbsent = ev.status === 'absent';
+      if (!wasAbsent) ev.status = 'submitted';
       const vs = CFG.CATS.map(cat => ev.scores?.[catKey(cat)]).filter(v => v!=null);
-      const overall = vs.length ? vs.reduce((a,b)=>a+b,0)/vs.length : null;
-      const payload = { camper_id:c.id, clinician_name:g.clinicianName, eval_date:g.date, court:g.court, eval_time:g.time, scores:ev.scores||{}, comments:ev.comments||'', overall_score:overall, status:'submitted' };
+      const overall = wasAbsent ? null : (vs.length ? vs.reduce((a,b)=>a+b,0)/vs.length : null);
+      const payload = { camper_id:c.id, clinician_name:g.clinicianName, eval_date:g.date, court:g.court, eval_time:g.time, scores:wasAbsent?{}:(ev.scores||{}), comments:ev.comments||'', overall_score:overall, status:wasAbsent?'absent':'submitted' };
       if (ev.id){ await supa('evaluations','PATCH',payload,`?id=eq.${ev.id}`); }
       else { const r=await supa('evaluations','POST',payload,'?select=id'); const row=Array.isArray(r)?r[0]:r; if(row?.id) ev.id=row.id; }
     }
@@ -2789,14 +2848,15 @@ async function liveEvalSubmit(){
       await liveEvalSaveCrewNote();
     }
     await loadAll();
-    // Push-notify each camper that they have a new eval (no email, to stay
-    // under the daily Resend allotment).
+    // Push-notify each camper that they have a new eval — skip the ones
+    // marked absent since there's nothing to view.
     for (const c of g.campers){
+      if (_liveEval.evals[String(c.id)]?.status === 'absent') continue;
       try{ await pushEvalToCamper(c.id, null); }catch(e){}
       await new Promise(r=>setTimeout(r,150));
     }
     _liveEval.isSubmitted = true;
-    toast('✓ Evaluations submitted');
+    toast(absentCount ? `✓ Submitted (${scoredCount} eval${scoredCount===1?'':'s'}, ${absentCount} DNP)` : '✓ Evaluations submitted');
     renderLiveEvalGameView();
   }catch(e){
     console.error('liveEval submit failed', e);
@@ -2974,8 +3034,8 @@ function renderAdminCampers(filter){
   let list=filter?campers.filter(c=>(c.first_name+' '+c.last_name).toLowerCase().includes(filter.toLowerCase())):[...campers];
   // Sort
   list.sort((a,b)=>{
-    const ae=evaluations.filter(e=>e.camper_id===a.id);
-    const be=evaluations.filter(e=>e.camper_id===b.id);
+    const ae=evaluations.filter(e=>e.camper_id===a.id&&e.status!=='absent');
+    const be=evaluations.filter(e=>e.camper_id===b.id&&e.status!=='absent');
     const aAvg=ae.length?ae.reduce((s,e)=>s+(e.overall_score||0),0)/ae.length:-1;
     const bAvg=be.length?be.reduce((s,e)=>s+(e.overall_score||0),0)/be.length:-1;
     let av,bv;
@@ -2994,7 +3054,7 @@ function renderAdminCampers(filter){
   if(!list.length){tbody.innerHTML='<tr><td colspan="9"><div class="empty"><span class="ei">👥</span><div class="et">No Campers Yet</div></div></td></tr>';return;}
   tbody.innerHTML='';
   list.forEach((c,i)=>{
-    const ce=evaluations.filter(e=>e.camper_id===c.id);
+    const ce=evaluations.filter(e=>e.camper_id===c.id&&e.status!=='absent');
     const avg=ce.length?(ce.reduce((s,e)=>s+(e.overall_score||0),0)/ce.length).toFixed(1):'—';
     const tr=document.createElement('tr');
     tr.innerHTML=`<td class="tdr ${i<3?'top':''}">${i+1}</td><td class="tdm">${c.first_name} ${c.last_name}</td><td>${c.city||''}${c.state?', '+c.state:''}</td><td style="font-size:11px">${c.email||''}</td><td><span class="bdg bdo">${c.pin||'—'}</span></td><td><span class="bdg bdgray">${c.type||'Non-Staff'}</span></td><td>${ce.length}</td><td><span style="font-family:Oswald,sans-serif;font-size:17px;color:var(--or)">${avg}</span></td><td style="display:flex;gap:4px">${c.email?`<button class="btn bsec bsm" title="Send PIN" onclick="sendPinEmail('${c.id}')" id="pinbtn-${c.id}">PIN</button>`:''}<button class="btn bsec bsm" title="Reset PIN" onclick="resetCamperPin('${c.id}')" id="resetpinbtn-${c.id}">Reset PIN</button><button class="btn bsec bsm" onclick="editCamper('${c.id}')">Edit</button><button class="btn bsec bsm" onclick="generateCamperReport('${c.id}')" title="PDF Report">📄</button><button class="btn bred bsm" onclick="delCamper('${c.id}')">Del</button></td>`;
@@ -3283,7 +3343,7 @@ async function delClinician(id){const ok=await cf('Remove this clinician?','Remo
 // ═══ RANKINGS ═══
 function buildCamperScores(){
   const cs={};
-  campers.forEach(c=>{const ev=evaluations.filter(e=>e.camper_id===c.id);if(!ev.length)return;const ca={};CFG.CATS.forEach(cat=>{const k=catKey(cat);const v=ev.map(e=>e.scores?.[k]).filter(v=>v!=null);ca[cat]=v.length?v.reduce((a,b)=>a+b,0)/v.length:0;});const ov=ev.map(e=>e.overall_score).filter(v=>v!=null);const o=ov.length?ov.reduce((a,b)=>a+b,0)/ov.length:0;const h=Math.max(ev.length/2,1);cs[c.id]={camper:c,catAverages:ca,overall:o,evalCount:ev.length,top10:ev.filter(e=>e.scores?.top10===true).length>=h,clinicians:[...new Set(ev.map(e=>e.clinician_name).filter(Boolean))]};});
+  campers.forEach(c=>{const ev=evaluations.filter(e=>e.camper_id===c.id&&e.status!=='absent');if(!ev.length)return;const ca={};CFG.CATS.forEach(cat=>{const k=catKey(cat);const v=ev.map(e=>e.scores?.[k]).filter(v=>v!=null);ca[cat]=v.length?v.reduce((a,b)=>a+b,0)/v.length:0;});const ov=ev.map(e=>e.overall_score).filter(v=>v!=null);const o=ov.length?ov.reduce((a,b)=>a+b,0)/ov.length:0;const h=Math.max(ev.length/2,1);cs[c.id]={camper:c,catAverages:ca,overall:o,evalCount:ev.length,top10:ev.filter(e=>e.scores?.top10===true).length>=h,clinicians:[...new Set(ev.map(e=>e.clinician_name).filter(Boolean))]};});
   return cs;
 }
 function renderAdminRankings(){
@@ -5103,7 +5163,7 @@ function renderDailyView(){
         .filter(Boolean);
       const linkBase = 'cursor:pointer;text-decoration:underline;text-decoration-color:var(--or);text-decoration-thickness:1px;text-underline-offset:3px';
       const camperRows = camperObjs.map(c=>{
-        const n = evaluations.filter(e=>e.camper_id===c.id).length;
+        const n = evaluations.filter(e=>e.camper_id===c.id && e.status!=='absent').length;
         return '<div style="font-size:12px;color:var(--tx);font-weight:600;display:flex;justify-content:space-between;gap:8px;margin-bottom:2px"><span onclick="event.stopPropagation();openCamperProfile(\''+c.id+'\')" style="'+linkBase+'">'+c.first_name+' '+c.last_name+'</span><span style="font-size:10px;color:var(--tx3);font-weight:400;flex-shrink:0">'+n+' eval'+(n!==1?'s':'')+'</span></div>';
       }).join('');
       const clHtml = clObjs.length
@@ -5131,7 +5191,7 @@ function renderEvalTracker(){
   const con = document.getElementById('etContent');
   if(!con) return;
   const total = campers.length;
-  const evaluated = campers.filter(c=>evaluations.some(e=>e.camper_id===c.id)).length;
+  const evaluated = campers.filter(c=>evaluations.some(e=>e.camper_id===c.id&&e.status!=='absent')).length;
   const noEval = total - evaluated;
   if(sumCon){
     sumCon.innerHTML =
@@ -5141,12 +5201,12 @@ function renderEvalTracker(){
   }
   renderEvalTrackerByClinician();
   let list = [...campers].sort((a,b)=>(a.last_name+a.first_name).localeCompare(b.last_name+b.first_name));
-  if(_evalFilter==='none') list = list.filter(c=>!evaluations.some(e=>e.camper_id===c.id));
-  if(_evalFilter==='partial') list = list.filter(c=>{ const n=evaluations.filter(e=>e.camper_id===c.id).length; return n>0&&n<2; });
-  if(_evalFilter==='complete') list = list.filter(c=>evaluations.filter(e=>e.camper_id===c.id).length>=2);
+  if(_evalFilter==='none') list = list.filter(c=>!evaluations.some(e=>e.camper_id===c.id&&e.status!=='absent'));
+  if(_evalFilter==='partial') list = list.filter(c=>{ const n=evaluations.filter(e=>e.camper_id===c.id&&e.status!=='absent').length; return n>0&&n<2; });
+  if(_evalFilter==='complete') list = list.filter(c=>evaluations.filter(e=>e.camper_id===c.id&&e.status!=='absent').length>=2);
   if(!list.length){ con.innerHTML='<div class="empty"><span class="ei">✅</span><div class="et">All Good</div></div>'; return; }
   con.innerHTML = list.map(c=>{
-    const evs = evaluations.filter(e=>e.camper_id===c.id);
+    const evs = evaluations.filter(e=>e.camper_id===c.id&&e.status!=='absent');
     const n = evs.length;
     const avg = n ? (evs.map(e=>e.overall_score||0).reduce((a,b)=>a+b,0)/n).toFixed(1) : '—';
     const clinNames = [...new Set(evs.map(e=>e.clinician_name).filter(Boolean))];
@@ -5229,7 +5289,7 @@ function generateAllReports(){
   next();
 }
 function buildAndDownloadReport(c){
-  const evs = evaluations.filter(e=>e.camper_id===c.id);
+  const evs = evaluations.filter(e=>e.camper_id===c.id && e.status!=='absent');
   const n = evs.length;
   const avg = n ? (evs.map(e=>e.overall_score||0).reduce((a,b)=>a+b,0)/n).toFixed(1) : 'N/A';
   const top10 = evs.filter(e=>e.scores&&e.scores.top10===true).length >= Math.max(1,n/2);
