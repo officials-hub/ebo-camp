@@ -1839,7 +1839,11 @@ function logout(){
   document.getElementById('app').style.display='none';
   document.querySelectorAll('.portal').forEach(p=>p.classList.remove('on'));
   document.querySelectorAll('.bnav').forEach(n=>{n.classList.remove('on');n.style.display='';});
+  stopChatBackgroundPoll();
   stopFilmBackgroundPoll();
+  // Reset polling watermarks so the next login starts with a clean full load.
+  _lastChatTs=null;
+  _lastFilmPostedAt=null;
   CU=null;CR=null;
   document.querySelectorAll('.fi').forEach(i=>i.value='');
   document.querySelectorAll('.lerr').forEach(e=>e.style.display='none');
@@ -3981,11 +3985,33 @@ let chatMessages=[];
 let chatLastRead=parseInt(localStorage.getItem('chatLastRead')||'0');
 let chatActiveSuffix=null; // 'Camper','Staff','Admin' — whichever tab is open, or null
 let _chatPollTimer=null;
+let _lastChatTs=null; // ISO of newest chat created_at we've seen — null = do a full load
 
 async function loadChat(){
   try{
-    const msgs=await supa('chat','GET',null,'?order=created_at.asc&limit=300');
-    chatMessages=msgs||[];
+    if (_lastChatTs == null) {
+      // First load — pull recent history (last 300) and seed the watermark.
+      const msgs = await supa('chat','GET',null,'?order=created_at.asc&limit=300');
+      chatMessages = msgs || [];
+      if (chatMessages.length) _lastChatTs = chatMessages[chatMessages.length-1].created_at;
+      checkChatBadge();
+      return;
+    }
+    // Incremental — only rows newer than the last one we have. Dedupe by id
+    // because the sender already optimistically appends their own row in
+    // sendChatMessage. Cap the array at the most recent 300 so it doesn't
+    // grow without bound over a long session.
+    const newMsgs = await supa('chat','GET',null,
+      `?order=created_at.asc&created_at=gt.${encodeURIComponent(_lastChatTs)}`);
+    if (!Array.isArray(newMsgs) || !newMsgs.length) return;
+    const seen = new Set(chatMessages.map(m => m.id));
+    let appended = false;
+    for (const m of newMsgs) {
+      if (!seen.has(m.id)) { chatMessages.push(m); appended = true; }
+    }
+    if (!appended) return;
+    if (chatMessages.length > 300) chatMessages = chatMessages.slice(-300);
+    _lastChatTs = chatMessages[chatMessages.length-1].created_at;
     checkChatBadge();
   }catch(e){console.warn('Chat load error',e);}
 }
@@ -4048,7 +4074,11 @@ function startChatBackgroundPoll(){
         showChatNotif(latest);
       }
     }
-  },4000);
+  },10000);
+}
+
+function stopChatBackgroundPoll(){
+  if(_chatPollTimer){clearInterval(_chatPollTimer);_chatPollTimer=null;}
 }
 
 function renderChatMessages(suffix){
@@ -4324,11 +4354,19 @@ function downloadCampDoc(id){
   }catch(e){console.error('Doc download failed',e);toast('Download failed',true);}
 }
 
-// Re-render chat if app becomes visible again
+// Pause background pollers while the tab is hidden — there's no point burning
+// Supabase egress on a backgrounded tab. Resume + run a one-shot fetch when
+// it comes back so the UI is fresh immediately.
 document.addEventListener('visibilitychange',()=>{
-  if(!document.hidden&&chatActiveSuffix){
-    loadChat().then(()=>renderChatMessages(chatActiveSuffix));
+  if (document.hidden) {
+    stopChatBackgroundPoll();
+    stopFilmBackgroundPoll();
+    return;
   }
+  if (!CR) return; // logged out
+  startChatBackgroundPoll();
+  if (CR === 'camper') startFilmBackgroundPoll();
+  if (chatActiveSuffix) loadChat().then(()=>renderChatMessages(chatActiveSuffix));
 });
 
 // ═══ CAMPER PROFILES VIEW ═══
@@ -4595,6 +4633,7 @@ async function sendGameFilmEmails(url,camperIds){
 
 let _filmPollTimer=null;
 let _lastFilmNotifId=null;
+let _lastFilmPostedAt=null; // ISO of newest game_films.posted_at we've fetched
 
 function showFilmNotif(count){
   const el=document.getElementById('filmNotif');
@@ -4618,14 +4657,40 @@ function checkFilmNotifOnLogin(){
 function startFilmBackgroundPoll(){
   if(_filmPollTimer)return;
   if(CR!=='camper'||!CU?.id)return;
+  // Seed the watermark from whatever loadAll already populated, so the first
+  // poll only fetches genuinely new films instead of the entire table.
+  if (_lastFilmPostedAt == null && Array.isArray(gameFilms) && gameFilms.length) {
+    _lastFilmPostedAt = gameFilms.reduce(
+      (max,f) => (f.posted_at && f.posted_at > max) ? f.posted_at : max,
+      gameFilms[0].posted_at || ''
+    );
+  }
   _filmPollTimer=setInterval(async()=>{
     try{
-      const [films,tags]=await Promise.all([
-        supa('game_films','GET',null,'?order=posted_at.desc'),
-        supa('game_film_campers','GET',null,'')
-      ]);
-      gameFilms=films||[];
-      gameFilmCampers=tags||[];
+      const filter = _lastFilmPostedAt
+        ? `?order=posted_at.desc&posted_at=gt.${encodeURIComponent(_lastFilmPostedAt)}`
+        : '?order=posted_at.desc';
+      const newFilms = await supa('game_films','GET',null,filter);
+      if (!Array.isArray(newFilms) || !newFilms.length) return;
+      const seenFilms = new Set(gameFilms.map(f => f.id));
+      const trulyNew = newFilms.filter(f => !seenFilms.has(f.id));
+      if (!trulyNew.length) return;
+      gameFilms = [...trulyNew, ...gameFilms];
+      _lastFilmPostedAt = trulyNew.reduce(
+        (max,f) => (f.posted_at && f.posted_at > max) ? f.posted_at : max,
+        _lastFilmPostedAt || trulyNew[0].posted_at || ''
+      );
+      // Pull tags for just the new film IDs so camperFilms() can match them.
+      const ids = trulyNew.map(f => f.id).filter(Boolean).join(',');
+      if (ids) {
+        try{
+          const newTags = await supa('game_film_campers','GET',null,`?film_id=in.(${ids})`);
+          if (Array.isArray(newTags) && newTags.length) {
+            const seenTags = new Set(gameFilmCampers.map(t => t.id).filter(Boolean));
+            for (const t of newTags) if (!t.id || !seenTags.has(t.id)) gameFilmCampers.push(t);
+          }
+        }catch(e){}
+      }
       const mine=camperFilms(CU.id);
       if(mine.length&&mine[0].id!==_lastFilmNotifId){
         _lastFilmNotifId=mine[0].id;
